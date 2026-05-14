@@ -41,6 +41,7 @@ void ActivityManager::renderTaskTrampoline(void* param) {
 void ActivityManager::renderTaskLoop() {
   while (true) {
     ulTaskNotifyTake(pdTRUE, portMAX_DELAY);
+    renderPending_ = false;
     // Acquire the lock before reading currentActivity to avoid a TOCTOU race
     // where the main task deletes the activity between the null-check and render().
     RenderLock lock;
@@ -278,6 +279,7 @@ ScreenshotInfo ActivityManager::getScreenshotInfo() const {
 }
 
 void ActivityManager::requestUpdate(bool immediate) {
+  renderPending_ = true;
   if (immediate) {
     if (renderTaskHandle) {
       xTaskNotify(renderTaskHandle, 1, eIncrement);

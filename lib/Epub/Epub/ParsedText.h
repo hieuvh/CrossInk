@@ -16,14 +16,10 @@ class ParsedText {
   std::vector<std::string> words;
   std::vector<EpdFontFamily::Style> wordStyles;
   std::vector<bool> wordContinues;       // true = word attaches to previous (no space before it)
-  std::vector<bool> wordIsBionicSuffix;  // true = token is the regular tail of a bionic bold-prefix split
-  std::vector<bool> wordIsGuideDot;      // true = token is a guide dot (U+00B7) inserted between words
   std::vector<uint8_t> wordBackgroundBlack;
   bool extraParagraphSpacing;
   bool forceParagraphIndents;
   bool hyphenationEnabled;
-  bool bionicReadingEnabled;
-  bool guideReadingEnabled;
   BlockStyle blockStyle;
 
   void applyParagraphIndent();
@@ -43,13 +39,10 @@ class ParsedText {
 
  public:
   explicit ParsedText(const bool extraParagraphSpacing, const bool forceParagraphIndents = false,
-                      const bool hyphenationEnabled = false, const bool bionicReadingEnabled = false,
-                      const bool guideReadingEnabled = false, const BlockStyle& blockStyle = BlockStyle())
+                      const bool hyphenationEnabled = false, const BlockStyle& blockStyle = BlockStyle())
       : extraParagraphSpacing(extraParagraphSpacing),
         forceParagraphIndents(forceParagraphIndents),
         hyphenationEnabled(hyphenationEnabled),
-        bionicReadingEnabled(bionicReadingEnabled),
-        guideReadingEnabled(guideReadingEnabled),
         blockStyle(blockStyle) {}
   ~ParsedText() = default;
 

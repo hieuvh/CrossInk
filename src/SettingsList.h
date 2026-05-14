@@ -120,17 +120,16 @@ inline std::vector<SettingInfo> getSettingsList(const SdCardFontRegistry* regist
             {StrId::STR_PAGES_1, StrId::STR_PAGES_5, StrId::STR_PAGES_10, StrId::STR_PAGES_15, StrId::STR_PAGES_30},
             "refreshFrequency", StrId::STR_CAT_DISPLAY),
         SettingInfo::Enum(StrId::STR_UI_THEME, &CrossPointSettings::uiTheme,
-                          {StrId::STR_THEME_CLASSIC, StrId::STR_THEME_LYRA, StrId::STR_THEME_LYRA_EXTENDED,
-                           StrId::STR_THEME_ROUNDEDRAFF
-#if defined(CROSSINK_ENABLE_LYRA_CAROUSEL) && CROSSINK_ENABLE_LYRA_CAROUSEL
+                          {StrId::STR_THEME_CLASSIC, StrId::STR_THEME_LYRA, StrId::STR_THEME_LYRA_EXTENDED
                            ,
                            StrId::STR_THEME_LYRA_CAROUSEL
-#endif
                           },
                           "uiTheme", StrId::STR_CAT_DISPLAY),
         SettingInfo::Enum(StrId::STR_RECENT_BOOKS_VIEW, &CrossPointSettings::recentBooksView,
                           {StrId::STR_LIST_VIEW, StrId::STR_GRID_VIEW}, "recentBooksView", StrId::STR_CAT_DISPLAY),
         SettingInfo::Toggle(StrId::STR_SUNLIGHT_FADING_FIX, &CrossPointSettings::fadingFix, "fadingFix",
+                            StrId::STR_CAT_DISPLAY),
+        SettingInfo::Toggle(StrId::STR_SHOW_BUTTON_HINTS, &CrossPointSettings::showButtonHints, "showButtonHints",
                             StrId::STR_CAT_DISPLAY),
 
         // --- Reader ---
@@ -153,14 +152,8 @@ inline std::vector<SettingInfo> getSettingsList(const SdCardFontRegistry* regist
 #endif
                               StrId::STR_MEDIUM,
                               StrId::STR_LARGE,
-#ifndef OMIT_XLARGE_FONT
-                              StrId::STR_X_LARGE,
-#endif
 #ifndef OMIT_TEENSY_FONT
                               StrId::STR_TEENSY,
-#endif
-#ifndef OMIT_HUGE_FONT
-                              StrId::STR_HUGE,
 #endif
                           },
                           "fontSize", StrId::STR_CAT_READER),
@@ -188,10 +181,6 @@ inline std::vector<SettingInfo> getSettingsList(const SdCardFontRegistry* regist
                             "extraParagraphSpacing", StrId::STR_CAT_READER),
         SettingInfo::Toggle(StrId::STR_FORCE_PARAGRAPH_INDENTS, &CrossPointSettings::forceParagraphIndents,
                             "forceParagraphIndents", StrId::STR_CAT_READER),
-        SettingInfo::Toggle(StrId::STR_BIONIC_READING, &CrossPointSettings::bionicReadingEnabled,
-                            "bionicReadingEnabled", StrId::STR_CAT_READER),
-        SettingInfo::Toggle(StrId::STR_GUIDE_READING, &CrossPointSettings::guideReadingEnabled, "guideReadingEnabled",
-                            StrId::STR_CAT_READER),
         // --- Controls ---
         SettingInfo::Enum(StrId::STR_SIDE_BTN_LAYOUT, &CrossPointSettings::sideButtonLayout,
                           {StrId::STR_PREV_NEXT, StrId::STR_NEXT_PREV}, "sideButtonLayout", StrId::STR_CAT_CONTROLS),

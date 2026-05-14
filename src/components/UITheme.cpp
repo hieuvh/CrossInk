@@ -15,7 +15,6 @@
 #include "components/themes/lyra/Lyra3CoversTheme.h"
 #include "components/themes/lyra/LyraCarouselTheme.h"
 #include "components/themes/lyra/LyraTheme.h"
-#include "components/themes/roundedraff/RoundedRaffTheme.h"
 
 namespace {
 constexpr char kWidthPlaceholder[] = "[WIDTH]";
@@ -48,27 +47,15 @@ void UITheme::setTheme(CrossPointSettings::UI_THEME type) {
       currentTheme = std::make_unique<LyraTheme>();
       currentMetrics = &LyraMetrics::values;
       break;
-    case CrossPointSettings::UI_THEME::ROUNDEDRAFF:
-      LOG_DBG("UI", "Using RoundedRaff theme");
-      currentTheme = std::make_unique<RoundedRaffTheme>();
-      currentMetrics = &RoundedRaffMetrics::values;
-      break;
     case CrossPointSettings::UI_THEME::LYRA_3_COVERS:
       LOG_DBG("UI", "Using Lyra 3 Covers theme");
       currentTheme = std::make_unique<Lyra3CoversTheme>();
       currentMetrics = &Lyra3CoversMetrics::values;
       break;
     case CrossPointSettings::UI_THEME::LYRA_CAROUSEL:
-#if defined(CROSSINK_ENABLE_LYRA_CAROUSEL) && CROSSINK_ENABLE_LYRA_CAROUSEL
       LOG_DBG("UI", "Using Lyra Carousel theme");
       currentTheme = std::make_unique<LyraCarouselTheme>();
       currentMetrics = &LyraCarouselMetrics::values;
-#else
-      LOG_DBG("UI", "Lyra Carousel theme is disabled; using Lyra theme");
-      SETTINGS.uiTheme = static_cast<uint8_t>(CrossPointSettings::UI_THEME::LYRA);
-      currentTheme = std::make_unique<LyraTheme>();
-      currentMetrics = &LyraMetrics::values;
-#endif
       break;
     default:
       LOG_ERR("UI", "Unknown theme %d, falling back to Classic", static_cast<int>(type));

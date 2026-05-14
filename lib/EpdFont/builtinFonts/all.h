@@ -11,8 +11,6 @@
 //   OMIT_TEENSY_FONT - excludes 8px (Teensy) reading fonts; used by env:xlarge
 //   OMIT_TINY_FONT   - excludes 10px (Tiny) reading fonts; used by env:xlarge
 //   OMIT_SMALL_FONT  - excludes 12px (Small) reading fonts
-//   OMIT_XLARGE_FONT - excludes 18px (Extra Large) reading fonts; used by env:tiny
-//   OMIT_HUGE_FONT   - excludes 20px (Huge) reading fonts; used by all firmware envs except env:xlarge
 #ifdef OMIT_EMOJI_FONTS
 #define BUILTIN_READING_FONT_HEADER(name) <builtinFonts/noemoji/name.h>
 #elif defined(OMIT_PHM)
@@ -47,18 +45,6 @@
 #include BUILTIN_READING_FONT_HEADER(bitter_16_bolditalic)
 #include BUILTIN_READING_FONT_HEADER(bitter_16_italic)
 #include BUILTIN_READING_FONT_HEADER(bitter_16_regular)
-#ifndef OMIT_XLARGE_FONT
-#include BUILTIN_READING_FONT_HEADER(bitter_18_bold)
-#include BUILTIN_READING_FONT_HEADER(bitter_18_bolditalic)
-#include BUILTIN_READING_FONT_HEADER(bitter_18_italic)
-#include BUILTIN_READING_FONT_HEADER(bitter_18_regular)
-#endif
-#ifndef OMIT_HUGE_FONT
-#include BUILTIN_READING_FONT_HEADER(bitter_20_bold)
-#include BUILTIN_READING_FONT_HEADER(bitter_20_bolditalic)
-#include BUILTIN_READING_FONT_HEADER(bitter_20_italic)
-#include BUILTIN_READING_FONT_HEADER(bitter_20_regular)
-#endif
 
 #ifndef OMIT_TEENSY_FONT
 #include BUILTIN_READING_FONT_HEADER(charein_8_bold)
@@ -86,18 +72,6 @@
 #include BUILTIN_READING_FONT_HEADER(charein_16_bolditalic)
 #include BUILTIN_READING_FONT_HEADER(charein_16_italic)
 #include BUILTIN_READING_FONT_HEADER(charein_16_regular)
-#ifndef OMIT_XLARGE_FONT
-#include BUILTIN_READING_FONT_HEADER(charein_18_bold)
-#include BUILTIN_READING_FONT_HEADER(charein_18_bolditalic)
-#include BUILTIN_READING_FONT_HEADER(charein_18_italic)
-#include BUILTIN_READING_FONT_HEADER(charein_18_regular)
-#endif
-#ifndef OMIT_HUGE_FONT
-#include BUILTIN_READING_FONT_HEADER(charein_20_bold)
-#include BUILTIN_READING_FONT_HEADER(charein_20_bolditalic)
-#include BUILTIN_READING_FONT_HEADER(charein_20_italic)
-#include BUILTIN_READING_FONT_HEADER(charein_20_regular)
-#endif
 
 #ifndef OMIT_TEENSY_FONT
 #include BUILTIN_READING_FONT_HEADER(lexenddeca_8_bold)
@@ -125,18 +99,6 @@
 #include BUILTIN_READING_FONT_HEADER(lexenddeca_16_bolditalic)
 #include BUILTIN_READING_FONT_HEADER(lexenddeca_16_italic)
 #include BUILTIN_READING_FONT_HEADER(lexenddeca_16_regular)
-#ifndef OMIT_XLARGE_FONT
-#include BUILTIN_READING_FONT_HEADER(lexenddeca_18_bold)
-#include BUILTIN_READING_FONT_HEADER(lexenddeca_18_bolditalic)
-#include BUILTIN_READING_FONT_HEADER(lexenddeca_18_italic)
-#include BUILTIN_READING_FONT_HEADER(lexenddeca_18_regular)
-#endif
-#ifndef OMIT_HUGE_FONT
-#include BUILTIN_READING_FONT_HEADER(lexenddeca_20_bold)
-#include BUILTIN_READING_FONT_HEADER(lexenddeca_20_bolditalic)
-#include BUILTIN_READING_FONT_HEADER(lexenddeca_20_italic)
-#include BUILTIN_READING_FONT_HEADER(lexenddeca_20_regular)
-#endif
 
 #undef BUILTIN_READING_FONT_HEADER
 

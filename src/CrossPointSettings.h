@@ -190,18 +190,12 @@ class CrossPointSettings {
     LONG_PRESS_BUTTON_BEHAVIOR_COUNT
   };
 
-  // UI Theme. LYRA_CAROUSEL remains as a legacy value while the option is hidden by default.
   enum UI_THEME {
     CLASSIC = 0,
     LYRA = 1,
     LYRA_3_COVERS = 2,
-    ROUNDEDRAFF = 3,
-    LYRA_CAROUSEL = 4,
-#if defined(CROSSINK_ENABLE_LYRA_CAROUSEL) && CROSSINK_ENABLE_LYRA_CAROUSEL
-    UI_THEME_COUNT = 5
-#else
+    LYRA_CAROUSEL = 3,
     UI_THEME_COUNT = 4
-#endif
   };
   enum RECENT_BOOKS_VIEW { RECENT_BOOKS_LIST = 0, RECENT_BOOKS_GRID = 1, RECENT_BOOKS_VIEW_COUNT };
 
@@ -310,10 +304,6 @@ class CrossPointSettings {
   uint8_t fadingFix = 0;
   // Use book's embedded CSS styles for EPUB rendering (1 = enabled, 0 = disabled)
   uint8_t embeddedStyle = 1;
-  // Focus Reading - emphasizes the first part of words with bold
-  uint8_t bionicReadingEnabled = 0;
-  // Guide Dots - places a middle dot between words to guide the eye
-  uint8_t guideReadingEnabled = 0;
   // SD card font family name (empty = use built-in fontFamily)
   char sdFontFamilyName[32] = "";
   // Show hidden files/directories (starting with '.') in the file browser (0 = hidden, 1 = show)
@@ -328,6 +318,8 @@ class CrossPointSettings {
   uint8_t tiltPageTurn = TILT_OFF;
   // Language setting (Language enum index, default 0 = EN)
   uint8_t language = 0;
+  // Show button hints bar at the bottom of each screen (1 = show, 0 = hide)
+  uint8_t showButtonHints = 1;
 
   ~CrossPointSettings() = default;
 

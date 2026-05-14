@@ -39,9 +39,38 @@ void SettingsActivity::rebuildSettingsLists() {
   sdFontSystem.refreshIfDirty();
 
   const auto allSettings = getSettingsList(&sdFontSystem.registry());
+
+  // Per-tab helpers: find a setting by nameId and push to the appropriate vector.
+  auto addDisplaySetting = [&](StrId nameId) {
+    const auto it = std::find_if(allSettings.begin(), allSettings.end(),
+                                 [nameId](const auto& s) { return s.nameId == nameId; });
+    if (it != allSettings.end()) {
+      displaySettings.push_back(*it);
+      return;
+    }
+    LOG_ERR("SET", "Missing display setting definition for nameId=%d", static_cast<int>(nameId));
+  };
+  auto addReaderSetting = [&](StrId nameId) {
+    const auto it = std::find_if(allSettings.begin(), allSettings.end(),
+                                 [nameId](const auto& s) { return s.nameId == nameId; });
+    if (it != allSettings.end()) {
+      readerSettings.push_back(*it);
+      return;
+    }
+    LOG_ERR("SET", "Missing reader setting definition for nameId=%d", static_cast<int>(nameId));
+  };
+  auto addSystemSetting = [&](StrId nameId) {
+    const auto it = std::find_if(allSettings.begin(), allSettings.end(),
+                                 [nameId](const auto& s) { return s.nameId == nameId; });
+    if (it != allSettings.end()) {
+      systemSettings.push_back(*it);
+      return;
+    }
+    LOG_ERR("SET", "Missing system setting definition for nameId=%d", static_cast<int>(nameId));
+  };
   auto addControlSetting = [&](StrId nameId) {
     const auto it = std::find_if(allSettings.begin(), allSettings.end(),
-                                 [nameId](const auto& setting) { return setting.nameId == nameId; });
+                                 [nameId](const auto& s) { return s.nameId == nameId; });
     if (it != allSettings.end()) {
       controlsSettings.push_back(*it);
       return;
@@ -49,8 +78,8 @@ void SettingsActivity::rebuildSettingsLists() {
     LOG_ERR("SET", "Missing control setting definition for nameId=%d", static_cast<int>(nameId));
   };
   auto addControlSettingByKey = [&](const char* key) {
-    const auto it = std::find_if(allSettings.begin(), allSettings.end(), [key](const auto& setting) {
-      return setting.key && std::strcmp(setting.key, key) == 0;
+    const auto it = std::find_if(allSettings.begin(), allSettings.end(), [key](const auto& s) {
+      return s.key && std::strcmp(s.key, key) == 0;
     });
     if (it != allSettings.end()) {
       controlsSettings.push_back(*it);
@@ -59,35 +88,57 @@ void SettingsActivity::rebuildSettingsLists() {
     LOG_ERR("SET", "Missing control setting definition for key=%s", key);
   };
 
-  for (const auto& setting : allSettings) {
-    if (setting.category == StrId::STR_NONE_OPT || setting.category == StrId::STR_CAT_CONTROLS) continue;
-    if (setting.category == StrId::STR_CAT_DISPLAY) {
-      displaySettings.push_back(setting);
-    } else if (setting.category == StrId::STR_CAT_READER) {
-      readerSettings.push_back(setting);
-    } else if (setting.category == StrId::STR_CAT_SYSTEM) {
-      systemSettings.push_back(setting);
-    }
-  }
+  // Build Display tab with section headers
+  displaySettings.push_back(SettingInfo::SectionHeader(StrId::STR_SECT_APPEARANCE));
+  addDisplaySetting(StrId::STR_UI_THEME);
+  addDisplaySetting(StrId::STR_RECENT_BOOKS_VIEW);
+  addDisplaySetting(StrId::STR_REFRESH_FREQ);
+  addDisplaySetting(StrId::STR_SUNLIGHT_FADING_FIX);
+  addDisplaySetting(StrId::STR_SHOW_BUTTON_HINTS);
+  addDisplaySetting(StrId::STR_HIDE_BATTERY);
+  displaySettings.push_back(SettingInfo::SectionHeader(StrId::STR_SLEEP_SCREEN));
+  addDisplaySetting(StrId::STR_SLEEP_SCREEN);
+  addDisplaySetting(StrId::STR_SLEEP_COVER_MODE);
+  addDisplaySetting(StrId::STR_SLEEP_COVER_FILTER);
 
-  // Append device-only ACTION items
+  // Build Reader tab with section headers
+  readerSettings.push_back(SettingInfo::SectionHeader(StrId::STR_SECT_FONT));
+  addReaderSetting(StrId::STR_FONT_FAMILY);
+  readerSettings.push_back(SettingInfo::Action(StrId::STR_MANAGE_FONTS, SettingAction::DownloadFonts));
+  addReaderSetting(StrId::STR_FONT_SIZE);
+  addReaderSetting(StrId::STR_LINE_SPACING);
+  addReaderSetting(StrId::STR_PARA_ALIGNMENT);
+  addReaderSetting(StrId::STR_HYPHENATION);
+  readerSettings.push_back(SettingInfo::SectionHeader(StrId::STR_SECT_LAYOUT));
+  addReaderSetting(StrId::STR_SCREEN_MARGIN);
+  addReaderSetting(StrId::STR_ORIENTATION);
+  addReaderSetting(StrId::STR_EXTRA_SPACING);
+  addReaderSetting(StrId::STR_FORCE_PARAGRAPH_INDENTS);
+  readerSettings.push_back(SettingInfo::SectionHeader(StrId::STR_OTHER));
+  addReaderSetting(StrId::STR_TEXT_AA);
+  addReaderSetting(StrId::STR_EMBEDDED_STYLE);
+  addReaderSetting(StrId::STR_IMAGES);
+  readerSettings.push_back(SettingInfo::Action(StrId::STR_CUSTOMISE_STATUS_BAR, SettingAction::CustomiseStatusBar));
+
+  // Build System tab with section headers
+  systemSettings.push_back(SettingInfo::Action(StrId::STR_LANGUAGE, SettingAction::Language));
+  systemSettings.push_back(SettingInfo::SectionHeader(StrId::STR_SECT_CONNECTIVITY));
   systemSettings.push_back(SettingInfo::Action(StrId::STR_WIFI_NETWORKS, SettingAction::Network));
   systemSettings.push_back(SettingInfo::Action(StrId::STR_KOREADER_SYNC, SettingAction::KOReaderSync));
   systemSettings.push_back(SettingInfo::Action(StrId::STR_OPDS_SERVERS, SettingAction::OPDSBrowser));
+  systemSettings.push_back(SettingInfo::SectionHeader(StrId::STR_SECT_MAINTENANCE));
   systemSettings.push_back(SettingInfo::Action(StrId::STR_CLEAR_READING_CACHE, SettingAction::ClearCache));
-  systemSettings.push_back(SettingInfo::Action(StrId::STR_CHECK_UPDATES, SettingAction::CheckForUpdates));
-  systemSettings.push_back(SettingInfo::Action(StrId::STR_SD_FIRMWARE_UPDATE, SettingAction::SdFirmwareUpdate));
-  systemSettings.push_back(SettingInfo::Action(StrId::STR_LANGUAGE, SettingAction::Language));
-  // Insert "Manage Fonts" right after the font family setting so users discover it naturally
-  readerSettings.insert(readerSettings.begin() + 1,
-                        SettingInfo::Action(StrId::STR_MANAGE_FONTS, SettingAction::DownloadFonts));
-  readerSettings.push_back(SettingInfo::Action(StrId::STR_CUSTOMISE_STATUS_BAR, SettingAction::CustomiseStatusBar));
+  // systemSettings.push_back(SettingInfo::Action(StrId::STR_CHECK_UPDATES, SettingAction::CheckForUpdates));
+  // systemSettings.push_back(SettingInfo::Action(StrId::STR_SD_FIRMWARE_UPDATE, SettingAction::SdFirmwareUpdate));
+  systemSettings.push_back(SettingInfo::SectionHeader(StrId::STR_OTHER));
+  addSystemSetting(StrId::STR_SHOW_HIDDEN_FILES);
+  addSystemSetting(StrId::STR_MOVE_FINISHED_TO_READ);
+  addSystemSetting(StrId::STR_TIME_TO_SLEEP);
 
-  const bool hasTiltPageTurnSetting = std::any_of(allSettings.begin(), allSettings.end(), [](const auto& setting) {
-    return setting.nameId == StrId::STR_TILT_PAGE_TURN;
+  // Build Controls tab with section headers
+  const bool hasTiltPageTurnSetting = std::any_of(allSettings.begin(), allSettings.end(), [](const auto& s) {
+    return s.nameId == StrId::STR_TILT_PAGE_TURN;
   });
-
-  // Build controls settings with section headers in desired display order
   const size_t expectedControlsSettingsCount = hasTiltPageTurnSetting ? 15 : 13;
   controlsSettings.reserve(expectedControlsSettingsCount);
   controlsSettings.push_back(SettingInfo::SectionHeader(StrId::STR_POWER_BUTTON));
@@ -301,12 +352,12 @@ void SettingsActivity::toggleCurrentSetting() {
       case SettingAction::ClearCache:
         startActivityForResult(std::make_unique<ClearCacheActivity>(renderer, mappedInput), resultHandler);
         break;
-      case SettingAction::CheckForUpdates:
-        startActivityForResult(std::make_unique<OtaUpdateActivity>(renderer, mappedInput), resultHandler);
-        break;
-      case SettingAction::SdFirmwareUpdate:
-        startActivityForResult(std::make_unique<SdFirmwareUpdateActivity>(renderer, mappedInput), resultHandler);
-        break;
+      // case SettingAction::CheckForUpdates:
+      //   startActivityForResult(std::make_unique<OtaUpdateActivity>(renderer, mappedInput), resultHandler);
+      //   break;
+      // case SettingAction::SdFirmwareUpdate:
+      //   startActivityForResult(std::make_unique<SdFirmwareUpdateActivity>(renderer, mappedInput), resultHandler);
+      //   break;
       case SettingAction::DownloadFonts:
         startActivityForResult(std::make_unique<FontDownloadActivity>(renderer, mappedInput),
                                [this](const ActivityResult&) {
@@ -385,7 +436,7 @@ void SettingsActivity::render(RenderLock&&) {
     const int labelX = (pageWidth - labelWidth) / 2;
     const int labelY =
         pageHeight - metrics.buttonHintsHeight - metrics.verticalSpacing - 15;  // 15px above the button hints
-    renderer.drawText(SMALL_FONT_ID, labelX, labelY, "CrossInk " CROSSINK_VERSION);
+    renderer.drawText(SMALL_FONT_ID, labelX, labelY, "Meink " CROSSINK_VERSION);
   }
 
   // Draw help text

@@ -33,11 +33,9 @@ body:
     id: build-variant
     attributes:
       label: Build Variant
-      description: What build variant are you using? (e.g., tiny, xlarge, no_emoji)
+      description: What build variant are you using?
       options:
         - tiny
-        - xlarge
-        - no_emoji
     validations:
       required: true
 

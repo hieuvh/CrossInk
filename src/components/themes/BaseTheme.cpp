@@ -135,6 +135,7 @@ void BaseTheme::drawProgressBar(const GfxRenderer& renderer, Rect rect, const si
 
 void BaseTheme::drawButtonHints(GfxRenderer& renderer, const char* btn1, const char* btn2, const char* btn3,
                                 const char* btn4, const bool allowInvertedText) const {
+  if (!SETTINGS.showButtonHints) return;
   const GfxRenderer::Orientation orig_orientation = renderer.getOrientation();
   const bool invertText = allowInvertedText && orig_orientation == GfxRenderer::Orientation::PortraitInverted;
   renderer.setOrientation(invertText ? GfxRenderer::Orientation::PortraitInverted : GfxRenderer::Orientation::Portrait);
@@ -143,7 +144,8 @@ void BaseTheme::drawButtonHints(GfxRenderer& renderer, const char* btn1, const c
   constexpr int buttonWidth = 106;
   constexpr int buttonHeight = BaseMetrics::values.buttonHintsHeight;
   const int buttonY = invertText ? pageHeight : BaseMetrics::values.buttonHintsHeight;
-  constexpr int textYOffset = 7;  // Distance from top of button to text baseline
+  const int textHeight = renderer.getTextHeight(UI_10_FONT_ID);
+  const int textYOffset = (buttonHeight - textHeight) / 2;
   // X3 has wider screen in portrait (528 vs 480), use more spacing
   constexpr int x4ButtonPositions[] = {25, 130, 245, 350};
   constexpr int x3ButtonPositions[] = {38, 154, 268, 384};

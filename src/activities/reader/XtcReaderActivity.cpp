@@ -403,13 +403,11 @@ void XtcReaderActivity::renderPage() {
     }
     renderer.copyGrayscaleLsbBuffers();
 
-    // Pass 3: MSB buffer - mark LIGHT AND DARK gray (XTH value 1 or 2)
-    // In LUT: 0 bit = apply gray effect, 1 bit = untouched
-    renderer.clearScreen(0x00);
+    // Pass 3: MSB buffer - build on the LSB result without clearing.
+    // Dark-gray pixels (pv==1) are already WHITE from the LSB pass; only add light-gray (pv==2).
     for (uint16_t y = 0; y < pageHeight; y++) {
       for (uint16_t x = 0; x < pageWidth; x++) {
-        const uint8_t pv = getPixelValue(x, y);
-        if (pv == 1 || pv == 2) {  // Dark grey or Light grey
+        if (getPixelValue(x, y) == 2) {  // Light grey only; dark grey already WHITE from LSB
           renderer.drawPixel(x, y, false);
         }
       }

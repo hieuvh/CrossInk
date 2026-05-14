@@ -63,11 +63,7 @@ The UI now uses [Inter](https://fonts.google.com/specimen/Inter) as the display 
 
 ### Font Sizes
 
-There are 3 available build variants to choose from due to build size constraints: tiny, xlarge, and no_emoji
-
-**tiny**
-
-> No Extra Large or Huge font size. My preferred build.
+The **tiny** build variant includes emoji/symbol support across 5 font sizes:
 
 - Emoji & Misc. Symbols Support
 - 5 Font sizes:
@@ -76,29 +72,6 @@ There are 3 available build variants to choose from due to build size constraint
   - Small (12pt)
   - Medium (14pt)
   - Large (16pt)
-
-**xlarge**
-
-> Teensy, Tiny, and Small font sizes had to be removed to reduce build size and still support emoji/symbols.
-
-- Emoji & Misc. Symbols Support
-- 4 Font sizes:
-  - Medium (14pt)
-  - Large (16pt)
-  - Extra Large (18pt)
-  - Huge (20pt)
-
-**no_emoji**
-
-> All standard font sizes from Tiny through Extra Large are available, but no emoji/symbols support.
-
-- **No** Emoji & Misc. Symbols Support
-- 5 Font sizes:
-  - Tiny (10pt)
-  - Small (12pt)
-  - Medium (14pt)
-  - Large (16pt)
-  - Extra Large (18pt)
 
 ---
 
@@ -294,7 +267,7 @@ git submodule update --init --recursive
 
 ### Flashing your device
 
-Connect your Xteink X4 to your computer via USB-C and run the following command. Replace `tiny` with `xlarge` or `no_emoji` if you prefer a different build variant (see [Font Sizes](#font-sizes)).
+Connect your Xteink X4 to your computer via USB-C and run the following command.
 
 ```sh
 pio run -e tiny --target upload

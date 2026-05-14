@@ -4,8 +4,6 @@ in the same build directory.
 
 Default outputs:
   .pio/build/tiny/firmware-tiny.bin
-  .pio/build/xlarge/firmware-xlarge.bin
-  .pio/build/no_emoji/firmware-no_emoji.bin
 
 Release-candidate outputs when CROSSPOINT_RC_ARTIFACTS=1:
   .pio/build/tiny/firmware-tiny-<branch>-<hash>-RC.bin

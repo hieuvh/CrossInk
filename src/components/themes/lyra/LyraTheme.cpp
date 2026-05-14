@@ -337,13 +337,18 @@ void LyraTheme::drawListWithMetrics(const GfxRenderer& renderer, Rect rect, int 
 
     if (rowIcon != nullptr) {
       UIIcon icon = rowIcon(i);
+      uint32_t bitmapSize = iconSize;
       const uint8_t* iconBitmap = iconForName(icon, iconSize);
+      if (iconBitmap == nullptr && iconSize == mainMenuIconSize) {
+        iconBitmap = iconForName(icon, listIconSize);
+        bitmapSize = listIconSize;
+      }
       if (iconBitmap != nullptr) {
         const int iconX = rect.x + metrics.contentSidePadding + hPaddingInSelection;
         if (invertSelectedRows && selectedRow) {
-          renderer.drawIconInverted(iconBitmap, iconX, itemY + iconY, iconSize, iconSize);
+          renderer.drawIconInverted(iconBitmap, iconX, itemY + iconY, bitmapSize, bitmapSize);
         } else {
-          renderer.drawIcon(iconBitmap, iconX, itemY + iconY, iconSize, iconSize);
+          renderer.drawIcon(iconBitmap, iconX, itemY + iconY, bitmapSize, bitmapSize);
         }
       }
     }
@@ -375,16 +380,18 @@ void LyraTheme::drawListWithMetrics(const GfxRenderer& renderer, Rect rect, int 
 
 void LyraTheme::drawButtonHints(GfxRenderer& renderer, const char* btn1, const char* btn2, const char* btn3,
                                 const char* btn4, const bool allowInvertedText) const {
+  if (!SETTINGS.showButtonHints) return;
   const GfxRenderer::Orientation orig_orientation = renderer.getOrientation();
   const bool invertText = allowInvertedText && orig_orientation == GfxRenderer::Orientation::PortraitInverted;
   renderer.setOrientation(invertText ? GfxRenderer::Orientation::PortraitInverted : GfxRenderer::Orientation::Portrait);
 
   const int pageHeight = renderer.getScreenHeight();
   constexpr int buttonWidth = 80;
-  constexpr int smallButtonHeight = 15;
+  constexpr int smallButtonHeight = 12;
   constexpr int buttonHeight = LyraMetrics::values.buttonHintsHeight;
   const int buttonY = invertText ? pageHeight : LyraMetrics::values.buttonHintsHeight;
-  constexpr int textYOffset = 7;  // Distance from top of button to text baseline
+  const int textHeight = renderer.getTextHeight(SMALL_FONT_ID);
+  const int textYOffset = (buttonHeight - textHeight) / 2;
   // X3 has wider screen in portrait (528 vs 480), use more spacing
   constexpr int x4ButtonPositions[] = {58, 146, 254, 342};
   constexpr int x3ButtonPositions[] = {65, 157, 291, 383};

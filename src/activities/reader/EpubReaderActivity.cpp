@@ -920,6 +920,7 @@ void EpubReaderActivity::onReaderMenuConfirm(EpubReaderMenuActivity::MenuAction 
       break;
     case EpubReaderMenuActivity::MenuAction::ROTATE_SCREEN:
     case EpubReaderMenuActivity::MenuAction::READER_OPTIONS:
+    case EpubReaderMenuActivity::MenuAction::SECTION_HEADER:
       break;
   }
 }
@@ -966,14 +967,6 @@ void EpubReaderActivity::executeReaderQuickAction(CrossPointSettings::LONG_PRESS
       break;
     case CrossPointSettings::LONG_MENU_CHANGE_FONT:
       SETTINGS.fontFamily = (SETTINGS.fontFamily + 1) % CrossPointSettings::FONT_FAMILY_COUNT;
-      reindexCurrentSection();
-      break;
-    case CrossPointSettings::LONG_MENU_TOGGLE_GUIDE_DOTS:
-      SETTINGS.guideReadingEnabled = !SETTINGS.guideReadingEnabled;
-      reindexCurrentSection();
-      break;
-    case CrossPointSettings::LONG_MENU_TOGGLE_BIONIC:
-      SETTINGS.bionicReadingEnabled = !SETTINGS.bionicReadingEnabled;
       reindexCurrentSection();
       break;
     case CrossPointSettings::LONG_MENU_TOGGLE_BOOKMARK:
@@ -1034,12 +1027,6 @@ bool EpubReaderActivity::executeShortPowerButtonAction() {
     case CrossPointSettings::SHORT_PWRBTN::TOGGLE_FONT:
       executeReaderQuickAction(CrossPointSettings::LONG_MENU_CHANGE_FONT);
       return true;
-    case CrossPointSettings::SHORT_PWRBTN::TOGGLE_GUIDE_DOTS:
-      executeReaderQuickAction(CrossPointSettings::LONG_MENU_TOGGLE_GUIDE_DOTS);
-      return true;
-    case CrossPointSettings::SHORT_PWRBTN::TOGGLE_BIONIC_READING:
-      executeReaderQuickAction(CrossPointSettings::LONG_MENU_TOGGLE_BIONIC);
-      return true;
     case CrossPointSettings::SHORT_PWRBTN::TOGGLE_BOOKMARK:
       executeReaderQuickAction(CrossPointSettings::LONG_MENU_TOGGLE_BOOKMARK);
       return true;
@@ -1096,12 +1083,6 @@ bool EpubReaderActivity::executeLongPowerButtonAction() {
   switch (SETTINGS.longPwrBtn) {
     case CrossPointSettings::SHORT_PWRBTN::TOGGLE_FONT:
       executeReaderQuickAction(CrossPointSettings::LONG_MENU_CHANGE_FONT);
-      return true;
-    case CrossPointSettings::SHORT_PWRBTN::TOGGLE_GUIDE_DOTS:
-      executeReaderQuickAction(CrossPointSettings::LONG_MENU_TOGGLE_GUIDE_DOTS);
-      return true;
-    case CrossPointSettings::SHORT_PWRBTN::TOGGLE_BIONIC_READING:
-      executeReaderQuickAction(CrossPointSettings::LONG_MENU_TOGGLE_BIONIC);
       return true;
     case CrossPointSettings::SHORT_PWRBTN::TOGGLE_BOOKMARK:
       executeReaderQuickAction(CrossPointSettings::LONG_MENU_TOGGLE_BOOKMARK);
@@ -1345,8 +1326,7 @@ void EpubReaderActivity::render(RenderLock&& lock) {
     if (!section->loadSectionFile(SETTINGS.getReaderFontId(), SETTINGS.getReaderLineCompression(),
                                   SETTINGS.extraParagraphSpacing, SETTINGS.forceParagraphIndents,
                                   SETTINGS.paragraphAlignment, viewportWidth, viewportHeight,
-                                  SETTINGS.hyphenationEnabled, SETTINGS.embeddedStyle, SETTINGS.imageRendering,
-                                  SETTINGS.bionicReadingEnabled, SETTINGS.guideReadingEnabled)) {
+                                  SETTINGS.hyphenationEnabled, SETTINGS.embeddedStyle, SETTINGS.imageRendering)) {
       LOG_DBG("ERS", "Cache not found, building... (free=%u, maxAlloc=%u)", ESP.getFreeHeap(), ESP.getMaxAllocHeap());
 
       GUI.drawPopup(renderer, tr(STR_INDEXING));
@@ -1359,7 +1339,7 @@ void EpubReaderActivity::render(RenderLock&& lock) {
                                       SETTINGS.extraParagraphSpacing, SETTINGS.forceParagraphIndents,
                                       SETTINGS.paragraphAlignment, viewportWidth, viewportHeight,
                                       SETTINGS.hyphenationEnabled, SETTINGS.embeddedStyle, SETTINGS.imageRendering,
-                                      SETTINGS.bionicReadingEnabled, SETTINGS.guideReadingEnabled, popupFn,
+                                      popupFn,
                                       &imagesWereSuppressed, &layoutAbortedForLowMemory)) {
         if (layoutAbortedForLowMemory) {
           LOG_ERR("ERS", "EPUB section layout aborted for low heap; file may be corrupted or badly formatted");
@@ -1537,8 +1517,7 @@ void EpubReaderActivity::silentIndexNextChapterIfNeeded(const uint16_t viewportW
   if (nextSection.loadSectionFile(SETTINGS.getReaderFontId(), SETTINGS.getReaderLineCompression(),
                                   SETTINGS.extraParagraphSpacing, SETTINGS.forceParagraphIndents,
                                   SETTINGS.paragraphAlignment, viewportWidth, viewportHeight,
-                                  SETTINGS.hyphenationEnabled, SETTINGS.embeddedStyle, SETTINGS.imageRendering,
-                                  SETTINGS.bionicReadingEnabled, SETTINGS.guideReadingEnabled)) {
+                                  SETTINGS.hyphenationEnabled, SETTINGS.embeddedStyle, SETTINGS.imageRendering)) {
     return;
   }
 
@@ -1551,8 +1530,7 @@ void EpubReaderActivity::silentIndexNextChapterIfNeeded(const uint16_t viewportW
   if (!nextSection.createSectionFile(SETTINGS.getReaderFontId(), SETTINGS.getReaderLineCompression(),
                                      SETTINGS.extraParagraphSpacing, SETTINGS.forceParagraphIndents,
                                      SETTINGS.paragraphAlignment, viewportWidth, viewportHeight,
-                                     SETTINGS.hyphenationEnabled, SETTINGS.embeddedStyle, SETTINGS.imageRendering,
-                                     SETTINGS.bionicReadingEnabled, SETTINGS.guideReadingEnabled)) {
+                                     SETTINGS.hyphenationEnabled, SETTINGS.embeddedStyle, SETTINGS.imageRendering)) {
     LOG_ERR("ERS", "Failed silent indexing for chapter: %d", nextSpineIndex);
   } else {
     LOG_DBG("ERS", "Silent indexing complete: chapter=%d pages=%u free=%u maxAlloc=%u", nextSpineIndex,
@@ -1691,8 +1669,7 @@ void EpubReaderActivity::renderContents(std::unique_ptr<Page> page, const int or
     renderer.copyGrayscaleLsbBuffers();
     const auto tGrayLsb = millis();
 
-    // Render and copy to MSB buffer
-    renderer.clearScreen(0x00);
+    // MSB pass: build on the LSB result without clearing (dark-gray pixels already WHITE).
     renderer.setRenderMode(GfxRenderer::GRAYSCALE_MSB);
     if (needsTextGrayscale) {
       page->render(renderer, SETTINGS.getReaderFontId(), orientedMarginLeft, orientedMarginTop);
@@ -1913,8 +1890,7 @@ bool EpubReaderActivity::drawCurrentPageToBuffer(const std::string& filePath, Gf
   if (!section->loadSectionFile(SETTINGS.getReaderFontId(), SETTINGS.getReaderLineCompression(),
                                 SETTINGS.extraParagraphSpacing, SETTINGS.forceParagraphIndents,
                                 SETTINGS.paragraphAlignment, viewportWidth, viewportHeight, SETTINGS.hyphenationEnabled,
-                                SETTINGS.embeddedStyle, SETTINGS.imageRendering, SETTINGS.bionicReadingEnabled,
-                                SETTINGS.guideReadingEnabled)) {
+                                SETTINGS.embeddedStyle, SETTINGS.imageRendering)) {
     if (!MemoryBudget::hasHeapForOptionalEpubRebuild("SLP", "EPUB sleep-page cache rebuild", spineIndex)) {
       return false;
     }
@@ -1925,7 +1901,7 @@ bool EpubReaderActivity::drawCurrentPageToBuffer(const std::string& filePath, Gf
                                     SETTINGS.extraParagraphSpacing, SETTINGS.forceParagraphIndents,
                                     SETTINGS.paragraphAlignment, viewportWidth, viewportHeight,
                                     SETTINGS.hyphenationEnabled, SETTINGS.embeddedStyle, SETTINGS.imageRendering,
-                                    SETTINGS.bionicReadingEnabled, SETTINGS.guideReadingEnabled, []() {})) {
+                                    []() {})) {
       LOG_ERR("SLP", "EPUB: failed to rebuild section cache for spine %d", spineIndex);
       return false;
     }

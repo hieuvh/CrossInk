@@ -94,7 +94,10 @@ void renderAntiAliased(GfxRenderer& renderer, RenderFn&& renderFn) {
   renderFn();
   renderer.copyGrayscaleLsbBuffers();
 
-  renderer.clearScreen(0x00);
+  // MSB pass: build on the LSB result without clearing.
+  // After the LSB pass the framebuffer has dark-gray pixels = WHITE, everything else = BLACK.
+  // GRAYSCALE_MSB draws dark-gray (already WHITE, no-op) and light-gray (BLACK→WHITE).
+  // Result is identical to a fresh clear + full render, at half the cost.
   renderer.setRenderMode(GfxRenderer::GRAYSCALE_MSB);
   renderFn();
   renderer.copyGrayscaleMsbBuffers();

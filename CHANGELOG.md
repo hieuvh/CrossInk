@@ -1,5 +1,19 @@
 # Changelog
 
+## [Unreleased]
+
+### Added
+- Added a **Button Hints** toggle in Settings → Display to show or hide the button label bar at the bottom of the screen.
+
+### Fixed
+- Fixed intermittent crash when opening a book from the Lyra Carousel home screen (race condition between the main task freeing carousel frame buffers and the render task reading them).
+- Fixed Lyra Carousel theme showing a solid black square instead of an icon for selected items in lists that use subtitle rows (e.g. Recent Books), for icons that only have 24px variants.
+- Fixed selected button icons appearing as a solid black square instead of a white icon on black during font cache scan passes.
+
+### Removed
+- Removed Bionic Reading and Guide Dots features from the EPUB reader.
+- Removed all UI languages except English and Vietnamese.
+
 ## [v1.2.10]
 
 ### Added

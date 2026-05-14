@@ -6,7 +6,6 @@
 #include "CrossPointSettings.h"
 #include "MappedInputManager.h"
 #include "components/UITheme.h"
-#include "fontIds.h"
 
 namespace {
 
@@ -22,17 +21,13 @@ struct ReaderLayoutSettingsSnapshot {
   uint8_t imageRendering;
   uint8_t extraParagraphSpacing;
   uint8_t forceParagraphIndents;
-  uint8_t bionicReadingEnabled;
-  uint8_t guideReadingEnabled;
-
   bool operator==(const ReaderLayoutSettingsSnapshot& other) const {
     return fontFamily == other.fontFamily && fontSize == other.fontSize && lineSpacing == other.lineSpacing &&
            orientation == other.orientation && screenMargin == other.screenMargin &&
            paragraphAlignment == other.paragraphAlignment && embeddedStyle == other.embeddedStyle &&
            hyphenationEnabled == other.hyphenationEnabled && imageRendering == other.imageRendering &&
            extraParagraphSpacing == other.extraParagraphSpacing &&
-           forceParagraphIndents == other.forceParagraphIndents && bionicReadingEnabled == other.bionicReadingEnabled &&
-           guideReadingEnabled == other.guideReadingEnabled;
+           forceParagraphIndents == other.forceParagraphIndents;
   }
   bool operator!=(const ReaderLayoutSettingsSnapshot& other) const { return !(*this == other); }
 };
@@ -50,8 +45,6 @@ ReaderLayoutSettingsSnapshot captureReaderLayoutSettings() {
       SETTINGS.imageRendering,
       SETTINGS.extraParagraphSpacing,
       SETTINGS.forceParagraphIndents,
-      SETTINGS.bionicReadingEnabled,
-      SETTINGS.guideReadingEnabled,
   };
 }
 
@@ -79,31 +72,45 @@ std::vector<EpubReaderMenuActivity::MenuItem> EpubReaderMenuActivity::buildMenuI
                                                                                      bool isCurrentPageBookmarked,
                                                                                      bool isBookCompleted) {
   std::vector<MenuItem> items;
-  constexpr size_t baseItemCount = 13;
+  // 5 section headers + 13 base actions
+  constexpr size_t baseItemCount = 18;
   const size_t totalItemCount = baseItemCount + (hasFootnotes ? 1u : 0u) + (hasBookmarks ? 2u : 0u);
   items.reserve(totalItemCount);
+
+  const auto addHeader = [&items](StrId id) { items.push_back({MenuAction::SECTION_HEADER, id, true}); };
+
+  addHeader(StrId::STR_READER_SECT_NAVIGATION);
   items.push_back({MenuAction::SELECT_CHAPTER, StrId::STR_SELECT_CHAPTER});
-  items.push_back({MenuAction::READER_OPTIONS, StrId::STR_READER_OPTIONS});
-  if (hasFootnotes) {
-    items.push_back({MenuAction::FOOTNOTES, StrId::STR_FOOTNOTES});
-  }
-  items.push_back({MenuAction::ROTATE_SCREEN, StrId::STR_ORIENTATION});
-  items.push_back({MenuAction::AUTO_PAGE_TURN, StrId::STR_AUTO_TURN_INTERVAL_SECONDS});
   items.push_back({MenuAction::GO_TO_PERCENT, StrId::STR_GO_TO_PERCENT});
+
+  addHeader(StrId::STR_CAT_DISPLAY);
+  items.push_back({MenuAction::READER_OPTIONS, StrId::STR_READER_OPTIONS});
+  items.push_back({MenuAction::ROTATE_SCREEN, StrId::STR_ORIENTATION});
+
+  addHeader(StrId::STR_BOOKMARKS);
   items.push_back(
       {MenuAction::BOOKMARK_TOGGLE, isCurrentPageBookmarked ? StrId::STR_REMOVE_BOOKMARK : StrId::STR_ADD_BOOKMARK});
   if (hasBookmarks) {
     items.push_back({MenuAction::VIEW_BOOKMARKS, StrId::STR_VIEW_BOOKMARKS});
     items.push_back({MenuAction::DELETE_BOOKMARKS, StrId::STR_DELETE_BOOKMARKS});
   }
-  items.push_back({MenuAction::SCREENSHOT, StrId::STR_SCREENSHOT_BUTTON});
-  items.push_back({MenuAction::DISPLAY_QR, StrId::STR_DISPLAY_QR});
-  items.push_back({MenuAction::GO_HOME, StrId::STR_GO_HOME_BUTTON});
-  items.push_back({MenuAction::DELETE_CACHE, StrId::STR_DELETE_CACHE});
-  items.push_back({MenuAction::SYNC, StrId::STR_SYNC_PROGRESS});
+
+  addHeader(StrId::STR_READER_SECT_READING);
+  items.push_back({MenuAction::AUTO_PAGE_TURN, StrId::STR_AUTO_TURN_INTERVAL_SECONDS});
+  if (hasFootnotes) {
+    items.push_back({MenuAction::FOOTNOTES, StrId::STR_FOOTNOTES});
+  }
   items.push_back({MenuAction::READING_STATS, StrId::STR_READING_STATS});
   items.push_back(
       {MenuAction::TOGGLE_COMPLETED, isBookCompleted ? StrId::STR_MARK_UNFINISHED : StrId::STR_MARK_FINISHED});
+
+  addHeader(StrId::STR_READER_SECT_TOOLS);
+  items.push_back({MenuAction::SCREENSHOT, StrId::STR_SCREENSHOT_BUTTON});
+  items.push_back({MenuAction::DISPLAY_QR, StrId::STR_DISPLAY_QR});
+  items.push_back({MenuAction::DELETE_CACHE, StrId::STR_DELETE_CACHE});
+  items.push_back({MenuAction::SYNC, StrId::STR_SYNC_PROGRESS});
+  items.push_back({MenuAction::GO_HOME, StrId::STR_GO_HOME_BUTTON});
+
   return items;
 }
 
@@ -115,14 +122,19 @@ void EpubReaderMenuActivity::onEnter() {
 void EpubReaderMenuActivity::onExit() { Activity::onExit(); }
 
 void EpubReaderMenuActivity::loop() {
-  // Handle navigation
-  buttonNavigator.onNext([this] {
-    selectedIndex = ButtonNavigator::nextIndex(selectedIndex, static_cast<int>(menuItems.size()));
+  // Handle navigation — skip section header rows
+  const int itemCount = static_cast<int>(menuItems.size());
+  buttonNavigator.onNext([this, itemCount] {
+    int next = ButtonNavigator::nextIndex(selectedIndex, itemCount);
+    while (menuItems[next].isHeader) next = ButtonNavigator::nextIndex(next, itemCount);
+    selectedIndex = next;
     requestUpdate();
   });
 
-  buttonNavigator.onPrevious([this] {
-    selectedIndex = ButtonNavigator::previousIndex(selectedIndex, static_cast<int>(menuItems.size()));
+  buttonNavigator.onPrevious([this, itemCount] {
+    int prev = ButtonNavigator::previousIndex(selectedIndex, itemCount);
+    while (menuItems[prev].isHeader) prev = ButtonNavigator::previousIndex(prev, itemCount);
+    selectedIndex = prev;
     requestUpdate();
   });
 
@@ -162,62 +174,46 @@ void EpubReaderMenuActivity::loop() {
 void EpubReaderMenuActivity::render(RenderLock&&) {
   renderer.clearScreen();
   const auto pageWidth = renderer.getScreenWidth();
+  const auto pageHeight = renderer.getScreenHeight();
   const auto orientation = renderer.getOrientation();
-  // Landscape orientation: button hints are drawn along a vertical edge, so we
-  // reserve a horizontal gutter to prevent overlap with menu content.
   const bool isLandscapeCw = orientation == GfxRenderer::Orientation::LandscapeClockwise;
   const bool isLandscapeCcw = orientation == GfxRenderer::Orientation::LandscapeCounterClockwise;
-  // Inverted portrait: button hints appear near the logical top, so we reserve
-  // vertical space to keep the header and list clear.
   const bool isPortraitInverted = orientation == GfxRenderer::Orientation::PortraitInverted;
   const int hintGutterWidth = (isLandscapeCw || isLandscapeCcw) ? 30 : 0;
-  // Landscape CW places hints on the left edge; CCW keeps them on the right.
   const int contentX = isLandscapeCw ? hintGutterWidth : 0;
   const int contentWidth = pageWidth - hintGutterWidth;
   const int hintGutterHeight = isPortraitInverted ? 50 : 0;
-  const int contentY = hintGutterHeight;
 
-  // Title
-  const std::string truncTitle =
-      renderer.truncatedText(UI_12_FONT_ID, title.c_str(), contentWidth - 40, EpdFontFamily::BOLD);
-  // Manual centering so we can respect the content gutter.
-  const int titleX =
-      contentX + (contentWidth - renderer.getTextWidth(UI_12_FONT_ID, truncTitle.c_str(), EpdFontFamily::BOLD)) / 2;
-  renderer.drawText(UI_12_FONT_ID, titleX, 15 + contentY, truncTitle.c_str(), true, EpdFontFamily::BOLD);
+  const auto& metrics = UITheme::getInstance().getMetrics();
 
-  // Progress summary
   std::string progressLine;
   if (totalPages > 0) {
     progressLine = std::string(tr(STR_CHAPTER_PREFIX)) + std::to_string(currentPage) + "/" +
                    std::to_string(totalPages) + std::string(tr(STR_PAGES_SEPARATOR));
   }
   progressLine += std::string(tr(STR_BOOK_PREFIX)) + std::to_string(bookProgressPercent) + "%";
-  renderer.drawCenteredText(UI_10_FONT_ID, 45, progressLine.c_str());
 
-  // Menu Items
-  const int startY = 75 + contentY;
-  constexpr int lineHeight = 30;
+  GUI.drawHeader(renderer,
+                 Rect{contentX, hintGutterHeight + metrics.topPadding, contentWidth, metrics.headerHeight},
+                 title.c_str(), progressLine.c_str());
 
-  for (size_t i = 0; i < menuItems.size(); ++i) {
-    const int displayY = startY + (i * lineHeight);
-    const bool isSelected = (static_cast<int>(i) == selectedIndex);
+  const int listTop = hintGutterHeight + metrics.topPadding + metrics.headerHeight + metrics.verticalSpacing;
+  const int listHeight = pageHeight - listTop - metrics.buttonHintsHeight - metrics.verticalSpacing;
 
-    if (isSelected) {
-      // Highlight only the content area so we don't paint over hint gutters.
-      renderer.fillRect(contentX, displayY, contentWidth - 1, lineHeight, true);
-    }
+  GUI.drawList(
+      renderer, Rect{contentX, listTop, contentWidth, listHeight},
+      static_cast<int>(menuItems.size()), selectedIndex,
+      [this](int i) { return std::string(I18N.get(menuItems[i].labelId)); },
+      nullptr, nullptr,
+      [this](int i) -> std::string {
+        if (menuItems[i].action == MenuAction::ROTATE_SCREEN) {
+          return std::string(I18N.get(orientationLabels[pendingOrientation]));
+        }
+        return "";
+      },
+      true, nullptr,
+      [this](int i) -> bool { return menuItems[i].isHeader; });
 
-    renderer.drawText(UI_10_FONT_ID, contentX + 20, displayY, I18N.get(menuItems[i].labelId), !isSelected);
-
-    if (menuItems[i].action == MenuAction::ROTATE_SCREEN) {
-      // Render current orientation value on the right edge of the content area.
-      const char* value = I18N.get(orientationLabels[pendingOrientation]);
-      const auto width = renderer.getTextWidth(UI_10_FONT_ID, value);
-      renderer.drawText(UI_10_FONT_ID, contentX + contentWidth - 20 - width, displayY, value, !isSelected);
-    }
-  }
-
-  // Footer / Hints
   const auto labels = mappedInput.mapLabels(tr(STR_BACK), tr(STR_SELECT), tr(STR_DIR_UP), tr(STR_DIR_DOWN));
   GUI.drawButtonHints(renderer, labels.btn1, labels.btn2, labels.btn3, labels.btn4, true);
 
