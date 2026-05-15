@@ -1060,6 +1060,10 @@ bool HomeActivity::preRenderCarouselFrames(bool showProgressPopup) {
 void HomeActivity::loop() {
   // Live header-clock refresh: trigger a redraw on each wall-clock minute boundary.
   // Polled at most once per second to keep RTC traffic (I2C on X3) bounded.
+  // Loop is the source of truth for lastShownClockMinute_ — set it BEFORE
+  // requestUpdate() so a second loop tick before render() runs doesn't fire
+  // a redundant trigger. (render() also snapshots, so toggling showHeaderClock
+  // off-then-on still self-syncs.)
   if (SETTINGS.showHeaderClock && SETTINGS.clockLiveRefresh) {
     const uint32_t nowMs = millis();
     if (nowMs - lastClockCheckMs_ >= 1000) {
@@ -1067,7 +1071,10 @@ void HomeActivity::loop() {
       int64_t epoch;
       if (TimeService::instance().getCurrentUtcEpoch(&epoch)) {
         const int64_t currentMinute = epoch / 60;
-        if (lastShownClockMinute_ >= 0 && currentMinute != lastShownClockMinute_) {
+        if (currentMinute != lastShownClockMinute_) {
+          LOG_DBG("CLK", "minute %lld -> %lld, requesting redraw",
+                  static_cast<long long>(lastShownClockMinute_), static_cast<long long>(currentMinute));
+          lastShownClockMinute_ = currentMinute;
           requestUpdate();
         }
       }
