@@ -19,8 +19,10 @@
 #include "OtaUpdateActivity.h"
 #include "SdCardFontGlobals.h"
 #include "SdFirmwareUpdateActivity.h"
+#include "SetTimeActivity.h"
 #include "SettingsList.h"
 #include "StatusBarSettingsActivity.h"
+#include "SyncTimeNowActivity.h"
 #include "activities/network/WifiSelectionActivity.h"
 #include "components/UITheme.h"
 #include "fontIds.h"
@@ -373,6 +375,12 @@ void SettingsActivity::toggleCurrentSetting() {
         break;
       case SettingAction::Language:
         startActivityForResult(std::make_unique<LanguageSelectActivity>(renderer, mappedInput), resultHandler);
+        break;
+      case SettingAction::SyncTimeNow:
+        startActivityForResult(std::make_unique<SyncTimeNowActivity>(renderer, mappedInput), resultHandler);
+        break;
+      case SettingAction::SetTimeManual:
+        startActivityForResult(std::make_unique<SetTimeActivity>(renderer, mappedInput), resultHandler);
         break;
       case SettingAction::None:
         // Do nothing
