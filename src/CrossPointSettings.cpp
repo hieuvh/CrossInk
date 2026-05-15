@@ -144,6 +144,7 @@ namespace {
 // and out-of-range JSON edits.
 void clampLoadedSettings(CrossPointSettings& s) {
   if (s.showHeaderClock > 1) s.showHeaderClock = 1;
+  if (s.clockLiveRefresh > 1) s.clockLiveRefresh = 1;
   if (s.timeFormat > 1) s.timeFormat = 0;
   if (s.utcOffsetIndex > 26) s.utcOffsetIndex = 12;
 }

@@ -31,6 +31,7 @@
 #include "components/UITheme.h"
 #include "components/themes/lyra/LyraCarouselTheme.h"
 #include "fontIds.h"
+#include "services/TimeService.h"
 
 namespace {
 constexpr uint32_t CAROUSEL_CACHE_MAGIC = 0x43434152;  // "CCAR"
@@ -1057,6 +1058,22 @@ bool HomeActivity::preRenderCarouselFrames(bool showProgressPopup) {
 }
 
 void HomeActivity::loop() {
+  // Live header-clock refresh: trigger a redraw on each wall-clock minute boundary.
+  // Polled at most once per second to keep RTC traffic (I2C on X3) bounded.
+  if (SETTINGS.showHeaderClock && SETTINGS.clockLiveRefresh) {
+    const uint32_t nowMs = millis();
+    if (nowMs - lastClockCheckMs_ >= 1000) {
+      lastClockCheckMs_ = nowMs;
+      int64_t epoch;
+      if (TimeService::instance().getCurrentUtcEpoch(&epoch)) {
+        const int64_t currentMinute = epoch / 60;
+        if (lastShownClockMinute_ >= 0 && currentMinute != lastShownClockMinute_) {
+          requestUpdate();
+        }
+      }
+    }
+  }
+
   const bool isCarousel =
       static_cast<CrossPointSettings::UI_THEME>(SETTINGS.uiTheme) == CrossPointSettings::UI_THEME::LYRA_CAROUSEL;
   const int previousHighlightedBookIdx = getHighlightedBookIndex();
@@ -1260,6 +1277,15 @@ void HomeActivity::render(RenderLock&&) {
   GUI.drawButtonHints(renderer, labels.btn1, labels.btn2, labels.btn3, labels.btn4);
 
   renderer.displayBuffer();
+
+  // Bookkeeping for live-clock refresh: record the wall-clock minute we just
+  // committed so loop() can detect the next boundary without re-firing.
+  {
+    int64_t epoch;
+    if (TimeService::instance().getCurrentUtcEpoch(&epoch)) {
+      lastShownClockMinute_ = epoch / 60;
+    }
+  }
 
   if (!firstRenderDone) {
     firstRenderDone = true;
