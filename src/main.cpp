@@ -34,6 +34,7 @@
 #include "activities/settings/SdFirmwareUpdateActivity.h"
 #include "components/UITheme.h"
 #include "fontIds.h"
+#include "services/TimeService.h"
 #ifdef SIMULATOR
 #include "simulator/SimulatorSmokeTest.h"
 #endif
@@ -518,6 +519,9 @@ void setup() {
 
   APP_STATE.loadFromFile();
   RECENT_BOOKS.loadFromFile();
+
+  TimeService::instance().boot(gpio.deviceIsX3() ? TimeService::DeviceType::X3
+                                                 : TimeService::DeviceType::X4);
 
   if (recoveryFirmwareMode) {
     // Skip normal home/reader routing: jump straight into the SD firmware picker.
