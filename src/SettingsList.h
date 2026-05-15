@@ -132,6 +132,26 @@ inline std::vector<SettingInfo> getSettingsList(const SdCardFontRegistry* regist
         SettingInfo::Toggle(StrId::STR_SHOW_BUTTON_HINTS, &CrossPointSettings::showButtonHints, "showButtonHints",
                             StrId::STR_CAT_DISPLAY),
 
+        // --- Time ---
+        SettingInfo::Toggle(StrId::STR_SHOW_HEADER_CLOCK, &CrossPointSettings::showHeaderClock, "showHeaderClock",
+                            StrId::STR_CAT_TIME),
+        SettingInfo::Enum(StrId::STR_TIME_FORMAT, &CrossPointSettings::timeFormat,
+                          {StrId::STR_TIME_FORMAT_24H, StrId::STR_TIME_FORMAT_12H}, "timeFormat", StrId::STR_CAT_TIME),
+        SettingInfo::Enum(StrId::STR_TIMEZONE, &CrossPointSettings::utcOffsetIndex,
+                          {
+                              StrId::STR_TZ_UTC_M12, StrId::STR_TZ_UTC_M11, StrId::STR_TZ_UTC_M10,
+                              StrId::STR_TZ_UTC_M9,  StrId::STR_TZ_UTC_M8,  StrId::STR_TZ_UTC_M7,
+                              StrId::STR_TZ_UTC_M6,  StrId::STR_TZ_UTC_M5,  StrId::STR_TZ_UTC_M4,
+                              StrId::STR_TZ_UTC_M3,  StrId::STR_TZ_UTC_M2,  StrId::STR_TZ_UTC_M1,
+                              StrId::STR_TZ_UTC_0,
+                              StrId::STR_TZ_UTC_P1,  StrId::STR_TZ_UTC_P2,  StrId::STR_TZ_UTC_P3,
+                              StrId::STR_TZ_UTC_P4,  StrId::STR_TZ_UTC_P5,  StrId::STR_TZ_UTC_P6,
+                              StrId::STR_TZ_UTC_P7,  StrId::STR_TZ_UTC_P8,  StrId::STR_TZ_UTC_P9,
+                              StrId::STR_TZ_UTC_P10, StrId::STR_TZ_UTC_P11, StrId::STR_TZ_UTC_P12,
+                              StrId::STR_TZ_UTC_P13, StrId::STR_TZ_UTC_P14,
+                          },
+                          "utcOffsetIndex", StrId::STR_CAT_TIME),
+
         // --- Reader ---
         // Built-in font-family entry. Replaced per-call with a registry-aware
         // version when SD fonts are installed.

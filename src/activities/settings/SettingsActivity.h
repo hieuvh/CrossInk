@@ -24,6 +24,8 @@ enum class SettingAction {
   // SdFirmwareUpdate,
   Language,
   DownloadFonts,
+  SyncTimeNow,
+  SetTimeManual,
 };
 
 struct SettingInfo {
