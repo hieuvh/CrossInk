@@ -436,7 +436,7 @@ void SettingsActivity::render(RenderLock&&) {
     const int labelX = (pageWidth - labelWidth) / 2;
     const int labelY =
         pageHeight - metrics.buttonHintsHeight - metrics.verticalSpacing - 15;  // 15px above the button hints
-    renderer.drawText(SMALL_FONT_ID, labelX, labelY, "Meink " CROSSINK_VERSION);
+    renderer.drawText(SMALL_FONT_ID, labelX, labelY, "Version " CROSSINK_VERSION);
   }
 
   // Draw help text
