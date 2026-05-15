@@ -127,10 +127,8 @@ void TimeService::boot(DeviceType deviceType) {
 #ifdef SIMULATOR
   (void)deviceType;
   rtc_ = std::make_unique<SimRtcBackend>();
-  // Default to host wall time so the simulator shows something sensible without manual setup.
-  timeval tv;
-  gettimeofday(&tv, nullptr);
-  rtc_->writeUtcEpoch(int64_t(tv.tv_sec));
+  // Note: do NOT seed host wall time here — let the persistence/no-data path
+  // below decide. Otherwise persisted-time restore is unreachable in simulator.
 #else
   if (deviceType == DeviceType::X3) {
     auto ds = std::make_unique<HalRtcDS3231>();
@@ -158,7 +156,18 @@ void TimeService::boot(DeviceType deviceType) {
     rtc_->writeUtcEpoch(persistence_->lastSyncedUtc());
     source_ = TimeSource::RestoredFromNvs;
   } else {
+#ifdef SIMULATOR
+    // Simulator convenience: with no RTC time and no persistence, seed host wall
+    // time so the header shows something sensible without manual setup. Mark as
+    // ManuallySet so any hypothetical follow-up cold-boot NTP cannot overwrite it
+    // (cold-boot NTP doesn't run in SIMULATOR anyway — defense in depth).
+    timeval tv;
+    gettimeofday(&tv, nullptr);
+    rtc_->writeUtcEpoch(int64_t(tv.tv_sec));
+    source_ = TimeSource::ManuallySet;
+#else
     source_ = TimeSource::None;
+#endif
   }
 
 #ifndef SIMULATOR
@@ -195,6 +204,12 @@ bool TimeService::formatLocal(char* out, size_t cap) {
 bool TimeService::hasValidTime() {
   Lock g(mutex_);
   return rtc_ != nullptr && rtc_->hasValidTime();
+}
+
+bool TimeService::getCurrentUtcEpoch(int64_t* out) {
+  Lock g(mutex_);
+  if (rtc_ == nullptr) return false;
+  return rtc_->readUtcEpoch(out);
 }
 
 void TimeService::onNtpSynced(int64_t epoch, bool ignoreManualGuard) {

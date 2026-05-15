@@ -38,7 +38,7 @@ void wifiOff() {
 }
 }  // namespace
 
-NtpSyncService::Result NtpSyncService::syncOnce(uint32_t wifiTimeoutMs, uint32_t ntpTimeoutMs) {
+NtpSyncService::Result NtpSyncService::syncOnce(uint32_t wifiTimeoutMs, uint32_t ntpTimeoutMs, bool tearDownWifi) {
   resetCancel();
 
   const WifiCredential* cred = pickCredential();
@@ -53,7 +53,7 @@ NtpSyncService::Result NtpSyncService::syncOnce(uint32_t wifiTimeoutMs, uint32_t
   uint32_t waited = 0;
   while (WiFi.status() != WL_CONNECTED && waited < wifiTimeoutMs) {
     if (cancelFlag_.load()) {
-      wifiOff();
+      if (tearDownWifi) wifiOff();
       return {false, 0, Error::WifiConnectFailed};
     }
     vTaskDelay(100 / portTICK_PERIOD_MS);
@@ -61,7 +61,7 @@ NtpSyncService::Result NtpSyncService::syncOnce(uint32_t wifiTimeoutMs, uint32_t
   }
   if (WiFi.status() != WL_CONNECTED) {
     LOG_ERR("NTP", "Wi-Fi connect failed (%s)", cred->ssid.c_str());
-    wifiOff();
+    if (tearDownWifi) wifiOff();
     return {false, 0, Error::WifiConnectFailed};
   }
 
@@ -73,7 +73,7 @@ NtpSyncService::Result NtpSyncService::syncOnce(uint32_t wifiTimeoutMs, uint32_t
   waited = 0;
   while (sntp_get_sync_status() != SNTP_SYNC_STATUS_COMPLETED && waited < ntpTimeoutMs) {
     if (cancelFlag_.load()) {
-      wifiOff();
+      if (tearDownWifi) wifiOff();
       return {false, 0, Error::NtpTimeout};
     }
     vTaskDelay(100 / portTICK_PERIOD_MS);
@@ -82,14 +82,14 @@ NtpSyncService::Result NtpSyncService::syncOnce(uint32_t wifiTimeoutMs, uint32_t
 
   if (sntp_get_sync_status() != SNTP_SYNC_STATUS_COMPLETED) {
     LOG_ERR("NTP", "SNTP timeout");
-    wifiOff();
+    if (tearDownWifi) wifiOff();
     return {false, 0, Error::NtpTimeout};
   }
 
   timeval tv;
   gettimeofday(&tv, nullptr);
   int64_t epoch = int64_t(tv.tv_sec);
-  wifiOff();
+  if (tearDownWifi) wifiOff();
 
   if (epoch < kMinValidEpoch || epoch > kMaxValidEpoch) {
     LOG_ERR("NTP", "absurd epoch %lld", static_cast<long long>(epoch));
@@ -106,7 +106,8 @@ NtpSyncService& NtpSyncService::instance() {
   return s;
 }
 
-NtpSyncService::Result NtpSyncService::syncOnce(uint32_t /*wifiTimeoutMs*/, uint32_t /*ntpTimeoutMs*/) {
+NtpSyncService::Result NtpSyncService::syncOnce(uint32_t /*wifiTimeoutMs*/, uint32_t /*ntpTimeoutMs*/,
+                                                bool /*tearDownWifi*/) {
   // Simulator stub: no Wi-Fi stack, always reports failure (matches the spec's
   // "expected stub failures" model). Use SimRtcBackend's writeUtcEpoch directly
   // for tests that need to inject time.

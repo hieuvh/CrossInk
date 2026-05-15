@@ -3,7 +3,6 @@
 #include <Arduino.h>
 #include <GfxRenderer.h>
 #include <I18n.h>
-#include <sys/time.h>
 
 #include <cstdio>
 
@@ -38,21 +37,21 @@ void SetTimeActivity::onExit() { Activity::onExit(); }
 void SetTimeActivity::seedFromCurrentTime() {
   const int offsetHours = static_cast<int>(SETTINGS.utcOffsetIndex) - 12;
 
-  if (TimeService::instance().hasValidTime()) {
-    timeval tv{};
-    if (gettimeofday(&tv, nullptr) == 0) {
-      const int64_t utcEpoch = static_cast<int64_t>(tv.tv_sec);
-      const int64_t localEpoch = utcEpoch + static_cast<int64_t>(offsetHours) * 3600;
-      const int64_t secondsInDay = ((localEpoch % kSecondsPerDay) + kSecondsPerDay) % kSecondsPerDay;
-      hour_ = static_cast<int>(secondsInDay / 3600);
-      minute_ = static_cast<int>((secondsInDay % 3600) / 60);
-      // Use the (UTC) date that contains this local time. We round the local
-      // time to its midnight, then convert back to a UTC anchor by undoing
-      // the offset; midnightOfDateUtc keeps the math in seconds-since-epoch.
-      const int64_t localMidnight = localEpoch - secondsInDay;
-      dateGuessAtMidnightUtc_ = localMidnight - static_cast<int64_t>(offsetHours) * 3600;
-      return;
-    }
+  int64_t utcEpoch = 0;
+  // Read through TimeService so we hit the active RtcBackend (DS3231 on X3,
+  // internal RTC on X4, SimRtcBackend in simulator). gettimeofday() would
+  // return the C3 internal RTC on X3, which is not kept in sync with DS3231.
+  if (TimeService::instance().getCurrentUtcEpoch(&utcEpoch)) {
+    const int64_t localEpoch = utcEpoch + static_cast<int64_t>(offsetHours) * 3600;
+    const int64_t secondsInDay = ((localEpoch % kSecondsPerDay) + kSecondsPerDay) % kSecondsPerDay;
+    hour_ = static_cast<int>(secondsInDay / 3600);
+    minute_ = static_cast<int>((secondsInDay % 3600) / 60);
+    // Use the (UTC) date that contains this local time. We round the local
+    // time to its midnight, then convert back to a UTC anchor by undoing
+    // the offset; midnightOfDateUtc keeps the math in seconds-since-epoch.
+    const int64_t localMidnight = localEpoch - secondsInDay;
+    dateGuessAtMidnightUtc_ = localMidnight - static_cast<int64_t>(offsetHours) * 3600;
+    return;
   }
 
   // No valid RTC: start the editor at 00:00 on the fallback date.

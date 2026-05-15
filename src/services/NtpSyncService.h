@@ -15,10 +15,12 @@ class NtpSyncService {
   static NtpSyncService& instance();
 
   // Connect to lastConnectedSsid (or first credential), run SNTP, return result.
-  // Disconnects Wi-Fi before returning regardless of success.
   // wifiTimeoutMs: how long to wait for WL_CONNECTED before giving up.
   // ntpTimeoutMs: how long to wait for SNTP_SYNC_STATUS_COMPLETED before giving up.
-  Result syncOnce(uint32_t wifiTimeoutMs = 8000, uint32_t ntpTimeoutMs = 5000);
+  // tearDownWifi: when true (default) Wi-Fi is disconnected before returning on every
+  //   exit path (cold-boot task, "Sync now" popup). Callers that need Wi-Fi to remain
+  //   up for follow-on requests (e.g. KOReader sync) pass false.
+  Result syncOnce(uint32_t wifiTimeoutMs = 8000, uint32_t ntpTimeoutMs = 5000, bool tearDownWifi = true);
 
   // Cooperative cancel: poll loop checks this each ~100 ms tick.
   void cancel() { cancelFlag_.store(true); }

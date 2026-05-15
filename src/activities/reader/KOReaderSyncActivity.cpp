@@ -83,8 +83,10 @@ void KOReaderSyncActivity::onWifiSelectionComplete(const bool success) {
   }
   requestUpdate(true);
 
-  // Sync time with NTP before making API requests
-  NtpSyncService::instance().syncOnce();
+  // Sync time with NTP before making API requests. Keep Wi-Fi up so the HTTPS
+  // calls below can reuse the connection (KOReader sync flow needs Wi-Fi until
+  // performUpload/performSync explicitly tears it down).
+  NtpSyncService::instance().syncOnce(/*wifiTimeoutMs=*/8000, /*ntpTimeoutMs=*/5000, /*tearDownWifi=*/false);
 
   {
     RenderLock lock(*this);

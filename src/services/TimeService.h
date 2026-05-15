@@ -28,6 +28,12 @@ class TimeService {
 
   bool hasValidTime();
 
+  // Returns the current UTC epoch from the active RTC backend (DS3231 on X3,
+  // internal RTC on X4, SimRtcBackend in simulator). Use this instead of
+  // gettimeofday() in editor flows: on X3, gettimeofday() reads the C3 internal
+  // RTC which is not kept in sync with the DS3231.
+  bool getCurrentUtcEpoch(int64_t* out);
+
   // Called from cold-boot NTP task and from "Sync now" popup.
   // boot-task path passes ignoreManualGuard=false; sync-now passes true.
   void onNtpSynced(int64_t epoch, bool ignoreManualGuard);
