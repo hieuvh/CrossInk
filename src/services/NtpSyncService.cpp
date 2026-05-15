@@ -47,7 +47,20 @@ NtpSyncService::Result NtpSyncService::syncOnce(uint32_t wifiTimeoutMs, uint32_t
     return {false, 0, Error::NoCredentials};
   }
 
+  // Match WifiSelectionActivity's connect setup so we behave the same as the
+  // existing Wi-Fi screen (which is known to work). Without these the SDK can
+  // race against an in-flight auto-reconnect using stale NVS credentials and
+  // never actually try the SSID we passed.
+  WiFi.persistent(false);
   WiFi.mode(WIFI_STA);
+  WiFi.disconnect(true, true);
+  delay(100);
+
+  String mac = WiFi.macAddress();
+  mac.replace(":", "");
+  String hostname = "CrossPoint-Reader-" + mac;
+  WiFi.setHostname(hostname.c_str());
+
   WiFi.begin(cred->ssid.c_str(), cred->password.c_str());
 
   uint32_t waited = 0;
