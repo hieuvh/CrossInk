@@ -2,10 +2,15 @@
 #include <cstddef>
 #include <cstdint>
 
+// Sanity bounds for epoch validity live in the HAL header alongside RtcBackend
+// (the canonical home for "is this clock real?" checks). Re-exported here so
+// existing call sites that read `TimeFormat::kMinValidEpoch` keep working.
+#include "../../lib/hal/HalRtc.h"
+
 namespace TimeFormat {
 
-constexpr int64_t kMinValidEpoch = 1735689600;   // 2025-01-01T00:00:00Z
-constexpr int64_t kMaxValidEpoch = 4102444800;   // 2100-01-01T00:00:00Z
+constexpr int64_t kMinValidEpoch = ::kMinValidEpoch;
+constexpr int64_t kMaxValidEpoch = ::kMaxValidEpoch;
 
 // Returns true on success and writes a NUL-terminated string to `out`.
 // `format24h=true` → "HH:MM" (5 chars). `format24h=false` → "H:MM AM/PM" (up to 8 chars).
