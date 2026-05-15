@@ -91,6 +91,18 @@ static void test_corrupt_magic_is_rejected_and_deleted() {
   PASS();
 }
 
+static void test_corrupt_version_is_rejected_and_deleted() {
+  MemFs fs; TimePersistenceStore s(fs);
+  ASSERT_TRUE(s.write(1747000000));
+  // Mutate the version field (offset 4, uint16) to an unsupported value.
+  fs.files[TimePersistenceStore::kPath][4] = 0xFF;
+  fs.files[TimePersistenceStore::kPath][5] = 0xFF;
+  TimePersistenceStore s2(fs);
+  ASSERT_TRUE(!s2.load());
+  ASSERT_TRUE(!fs.exists(TimePersistenceStore::kPath));  // deleted
+  PASS();
+}
+
 static void test_corrupt_crc_is_rejected() {
   MemFs fs; TimePersistenceStore s(fs);
   ASSERT_TRUE(s.write(1747000000));
@@ -121,6 +133,21 @@ static void test_atomic_write_keeps_old_file_on_crash() {
   PASS();
 }
 
+static void test_write_failure_is_propagated() {
+  MemFs fs; TimePersistenceStore s(fs);
+  ASSERT_TRUE(s.write(1747000000));  // baseline successful write
+  fs.failNextWrite = true;
+  ASSERT_TRUE(!s.write(1747100000));  // failed write returns false
+  // The store's "last written" state should NOT advance, so a subsequent valid
+  // write within the debounce window of the *original* timestamp should still
+  // be a no-op (debounced against the last successful write at 1747000000).
+  // Sanity-check: a write 30s past the original is still debounced.
+  auto savedAfterFirst = fs.files[TimePersistenceStore::kPath];
+  ASSERT_TRUE(s.write(1747000030));
+  ASSERT_EQ(fs.files[TimePersistenceStore::kPath], savedAfterFirst);
+  PASS();
+}
+
 static void test_debounce_within_60s_is_noop() {
   MemFs fs; TimePersistenceStore s(fs);
   ASSERT_TRUE(s.write(1747000000));
@@ -136,9 +163,11 @@ int main() {
   test_round_trip();
   test_load_missing_file();
   test_corrupt_magic_is_rejected_and_deleted();
+  test_corrupt_version_is_rejected_and_deleted();
   test_corrupt_crc_is_rejected();
   test_truncated_file_is_rejected();
   test_atomic_write_keeps_old_file_on_crash();
+  test_write_failure_is_propagated();
   test_debounce_within_60s_is_noop();
   fprintf(stderr, "Passed: %d, Failed: %d\n", testsPassed, testsFailed);
   return testsFailed == 0 ? 0 : 1;

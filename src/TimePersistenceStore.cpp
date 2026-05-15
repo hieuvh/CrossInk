@@ -2,6 +2,13 @@
 #include <cstring>
 
 namespace {
+// On-disk layout for /.crosspoint/time.bin. The file is written byte-for-byte
+// from this struct in host endianness. Both x86_64/arm64 hosts and the ESP32-C3
+// target are little-endian, so the file is portable in practice.
+//
+// The struct is 24 bytes total: bytes 20..23 are trailing padding kept zero by
+// value-initialization (Payload{}), and CRC coverage stops at byte 16 via
+// kPayloadCoreSize so the trailing padding never affects the checksum.
 struct Payload {
   uint32_t magic;
   uint16_t version;
@@ -9,6 +16,8 @@ struct Payload {
   int64_t  lastSyncedUtc;
   uint32_t crc32;
 };
+static_assert(sizeof(Payload) == 24, "Payload size must remain 24 bytes for on-disk compatibility");
+static_assert(offsetof(Payload, crc32) == 16, "crc32 must sit at offset 16 (no padding before it)");
 constexpr size_t kPayloadCoreSize = offsetof(Payload, crc32);  // bytes covered by CRC
 constexpr size_t kPayloadTotalSize = sizeof(Payload);
 }
