@@ -138,6 +138,17 @@ bool CrossPointSettings::saveToFile() const {
   return JsonSettingsIO::saveSettings(*this, SETTINGS_FILE_JSON);
 }
 
+namespace {
+// Clamp settings whose validity is not enforced by SettingsList (e.g. fields
+// not yet exposed in the settings UI). Defends against truncated/old files
+// and out-of-range JSON edits.
+void clampLoadedSettings(CrossPointSettings& s) {
+  if (s.showHeaderClock > 1) s.showHeaderClock = 1;
+  if (s.timeFormat > 1) s.timeFormat = 0;
+  if (s.utcOffsetIndex > 26) s.utcOffsetIndex = 12;
+}
+}  // namespace
+
 bool CrossPointSettings::loadFromFile() {
   // Try JSON first
   if (Storage.exists(SETTINGS_FILE_JSON)) {
@@ -145,6 +156,7 @@ bool CrossPointSettings::loadFromFile() {
     if (!json.isEmpty()) {
       bool resave = false;
       bool result = JsonSettingsIO::loadSettings(*this, json.c_str(), &resave);
+      if (result) clampLoadedSettings(*this);
       if (result && resave) {
         if (saveToFile()) {
           LOG_DBG("CPS", "Resaved settings to update format");
@@ -160,6 +172,7 @@ bool CrossPointSettings::loadFromFile() {
   // Fall back to binary migration
   if (Storage.exists(SETTINGS_FILE_BIN)) {
     if (loadFromBinaryFile()) {
+      clampLoadedSettings(*this);
       migrateLanguageBinaryFile();
       if (saveToFile()) {
         Storage.rename(SETTINGS_FILE_BIN, SETTINGS_FILE_BAK);
