@@ -3,6 +3,10 @@
 ## [Unreleased]
 
 ### Added
+- Added a header clock on the Home screen, with a new **Time** section in Settings → System (24-hour or 12-hour format, UTC offset from −12 to +14).
+- Added cold-boot NTP time sync on X4 (uses the last-connected Wi-Fi, runs once, then disconnects).
+- Added DS3231 hardware RTC support on X3 (read and write).
+- Added manual time entry in Settings → System (on-device editor and via the web Settings page's "Set to my browser's time" button).
 - Added a **Button Hints** toggle in Settings → Display to show or hide the button label bar at the bottom of the screen.
 
 ### Fixed
