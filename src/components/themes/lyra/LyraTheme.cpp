@@ -13,9 +13,11 @@
 #include <string>
 #include <vector>
 
+#include "CrossPointSettings.h"
 #include "RecentBooksStore.h"
 #include "activities/reader/BookReadingStats.h"
 #include "components/UITheme.h"
+#include "services/TimeService.h"
 #include "components/icons/book.h"
 #include "components/icons/book24.h"
 #include "components/icons/chart.h"
@@ -113,6 +115,16 @@ void LyraTheme::fillBatteryIcon(const GfxRenderer& renderer, Rect rect, uint16_t
 
 void LyraTheme::drawHeader(const GfxRenderer& renderer, Rect rect, const char* title, const char* subtitle) const {
   renderer.fillRect(rect.x, rect.y, rect.width, rect.height, false);
+
+  // Header clock (Home only — Home passes title=nullptr).
+  if (title == nullptr && SETTINGS.showHeaderClock) {
+    char clockBuf[16];
+    if (TimeService::instance().formatLocal(clockBuf, sizeof(clockBuf))) {
+      renderer.drawText(UI_12_FONT_ID, rect.x + LyraMetrics::values.contentSidePadding,
+                        rect.y + LyraMetrics::values.batteryBarHeight + 3, clockBuf, true,
+                        EpdFontFamily::BOLD);
+    }
+  }
 
   const bool showBatteryPercentage =
       SETTINGS.hideBatteryPercentage != CrossPointSettings::HIDE_BATTERY_PERCENTAGE::HIDE_ALWAYS;

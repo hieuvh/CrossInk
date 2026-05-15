@@ -10,11 +10,13 @@
 #include <cstdint>
 #include <string>
 
+#include "CrossPointSettings.h"
 #include "I18n.h"
 #include "RecentBooksStore.h"
 #include "activities/reader/BookReadingStats.h"
 #include "components/UITheme.h"
 #include "fontIds.h"
+#include "services/TimeService.h"
 
 // Internal constants
 namespace {
@@ -354,6 +356,15 @@ void BaseTheme::drawHeader(const GfxRenderer& renderer, Rect rect, const char* t
   constexpr int maxBatteryWidth = 80;
   renderer.fillRect(rect.x + rect.width - maxBatteryWidth, rect.y + 5, maxBatteryWidth,
                     BaseMetrics::values.batteryHeight + 10, false);
+
+  // Header clock (Home only — Home passes title=nullptr).
+  if (title == nullptr && SETTINGS.showHeaderClock) {
+    char clockBuf[16];
+    if (TimeService::instance().formatLocal(clockBuf, sizeof(clockBuf))) {
+      renderer.drawText(UI_12_FONT_ID, rect.x + BaseMetrics::values.contentSidePadding,
+                        rect.y + 5, clockBuf, true, EpdFontFamily::BOLD);
+    }
+  }
 
   const bool showBatteryPercentage =
       SETTINGS.hideBatteryPercentage != CrossPointSettings::HIDE_BATTERY_PERCENTAGE::HIDE_ALWAYS;
