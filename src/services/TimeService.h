@@ -3,8 +3,10 @@
 #include <cstdint>
 #include <memory>
 
+#ifndef SIMULATOR
 #include <freertos/FreeRTOS.h>
 #include <freertos/semphr.h>
+#endif
 
 class RtcBackend;
 class TimePersistenceStore;
@@ -42,7 +44,11 @@ class TimeService {
   std::unique_ptr<RtcBackend> rtc_;
   std::unique_ptr<TimePersistenceStore> persistence_;
   TimeSource source_ = TimeSource::None;
+#ifdef SIMULATOR
+  void* mutex_ = nullptr;
+#else
   SemaphoreHandle_t mutex_ = nullptr;
+#endif
 
   static void coldBootNtpTask(void* arg);
 };

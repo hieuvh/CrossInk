@@ -1,5 +1,7 @@
 #include "NtpSyncService.h"
 
+#ifndef SIMULATOR
+
 #include <Arduino.h>
 #include <WiFi.h>
 #include <esp_sntp.h>
@@ -96,3 +98,19 @@ NtpSyncService::Result NtpSyncService::syncOnce(uint32_t wifiTimeoutMs, uint32_t
   LOG_INF("NTP", "synced epoch=%lld", static_cast<long long>(epoch));
   return {true, epoch, Error::None};
 }
+
+#else  // SIMULATOR
+
+NtpSyncService& NtpSyncService::instance() {
+  static NtpSyncService s;
+  return s;
+}
+
+NtpSyncService::Result NtpSyncService::syncOnce(uint32_t /*wifiTimeoutMs*/, uint32_t /*ntpTimeoutMs*/) {
+  // Simulator stub: no Wi-Fi stack, always reports failure (matches the spec's
+  // "expected stub failures" model). Use SimRtcBackend's writeUtcEpoch directly
+  // for tests that need to inject time.
+  return {false, 0, Error::WifiConnectFailed};
+}
+
+#endif  // SIMULATOR
