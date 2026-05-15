@@ -117,12 +117,12 @@ void LyraTheme::drawHeader(const GfxRenderer& renderer, Rect rect, const char* t
   renderer.fillRect(rect.x, rect.y, rect.width, rect.height, false);
 
   // Header clock (Home only — Home passes title=nullptr).
+  // Drawn level with the battery percentage on the right (same Y, same font).
   if (title == nullptr && SETTINGS.showHeaderClock) {
     char clockBuf[16];
     if (TimeService::instance().formatLocal(clockBuf, sizeof(clockBuf))) {
-      renderer.drawText(UI_12_FONT_ID, rect.x + LyraMetrics::values.contentSidePadding,
-                        rect.y + LyraMetrics::values.batteryBarHeight + 3, clockBuf, true,
-                        EpdFontFamily::BOLD);
+      renderer.drawText(SMALL_FONT_ID, rect.x + LyraMetrics::values.contentSidePadding,
+                        rect.y + 5, clockBuf, true);
     }
   }
 

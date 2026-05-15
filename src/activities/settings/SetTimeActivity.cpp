@@ -101,7 +101,10 @@ void SetTimeActivity::loop() {
     requestUpdate();
     return;
   }
-  if (mappedInput.wasPressed(MappedInputManager::Button::Confirm)) {
+  // Use wasReleased so the Confirm press that opened this activity doesn't
+  // bleed back to SettingsActivity (which uses wasReleased for Confirm) and
+  // immediately re-open us. Matches the StatusBarSettingsActivity pattern.
+  if (mappedInput.wasReleased(MappedInputManager::Button::Confirm)) {
     TimeService::instance().onManualSet(composeUtcEpoch());
     finish();
     return;

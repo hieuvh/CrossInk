@@ -358,11 +358,12 @@ void BaseTheme::drawHeader(const GfxRenderer& renderer, Rect rect, const char* t
                     BaseMetrics::values.batteryHeight + 10, false);
 
   // Header clock (Home only — Home passes title=nullptr).
+  // Drawn level with the battery percentage on the right (same Y, same font).
   if (title == nullptr && SETTINGS.showHeaderClock) {
     char clockBuf[16];
     if (TimeService::instance().formatLocal(clockBuf, sizeof(clockBuf))) {
-      renderer.drawText(UI_12_FONT_ID, rect.x + BaseMetrics::values.contentSidePadding,
-                        rect.y + 5, clockBuf, true, EpdFontFamily::BOLD);
+      renderer.drawText(SMALL_FONT_ID, rect.x + BaseMetrics::values.contentSidePadding,
+                        rect.y + 5, clockBuf, true);
     }
   }
 

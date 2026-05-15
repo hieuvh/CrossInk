@@ -50,9 +50,10 @@ void SyncTimeNowActivity::loop() {
     return;
   }
 
-  // Error states: wait for Confirm to dismiss.
+  // Error states: wait for Confirm to dismiss. Use wasReleased so the Confirm
+  // press that opened this activity doesn't bleed back to SettingsActivity.
   if (phase_ == Phase::NoCreds || phase_ == Phase::Failed) {
-    if (mappedInput.wasPressed(MappedInputManager::Button::Confirm)) {
+    if (mappedInput.wasReleased(MappedInputManager::Button::Confirm)) {
       finish();
     }
     return;
