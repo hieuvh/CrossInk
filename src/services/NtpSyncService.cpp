@@ -73,10 +73,13 @@ NtpSyncService::Result NtpSyncService::syncOnce(uint32_t wifiTimeoutMs, uint32_t
     waited += 100;
   }
   if (WiFi.status() != WL_CONNECTED) {
-    LOG_ERR("NTP", "Wi-Fi connect failed (%s)", cred->ssid.c_str());
+    LOG_ERR("NTP", "Wi-Fi connect failed (%s) status=%d", cred->ssid.c_str(), int(WiFi.status()));
     if (tearDownWifi) wifiOff();
     return {false, 0, Error::WifiConnectFailed};
   }
+
+  IPAddress ip = WiFi.localIP();
+  LOG_INF("NTP", "Wi-Fi up (%s) ip=%d.%d.%d.%d, starting SNTP", cred->ssid.c_str(), ip[0], ip[1], ip[2], ip[3]);
 
   if (esp_sntp_enabled()) esp_sntp_stop();
   esp_sntp_setoperatingmode(ESP_SNTP_OPMODE_POLL);
@@ -94,7 +97,8 @@ NtpSyncService::Result NtpSyncService::syncOnce(uint32_t wifiTimeoutMs, uint32_t
   }
 
   if (sntp_get_sync_status() != SNTP_SYNC_STATUS_COMPLETED) {
-    LOG_ERR("NTP", "SNTP timeout");
+    LOG_ERR("NTP", "SNTP timeout after %lums (status=%d)", static_cast<unsigned long>(waited),
+            int(sntp_get_sync_status()));
     if (tearDownWifi) wifiOff();
     return {false, 0, Error::NtpTimeout};
   }

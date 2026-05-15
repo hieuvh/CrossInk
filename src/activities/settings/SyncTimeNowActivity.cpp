@@ -77,6 +77,18 @@ void SyncTimeNowActivity::loop() {
           message_ = tr(STR_NO_SAVED_WIFI);
           phase_ = Phase::NoCreds;
           break;
+        case NtpSyncService::Error::WifiConnectFailed:
+          message_ = std::string(tr(STR_SYNC_FAILED)) + ": Wi-Fi";
+          phase_ = Phase::Failed;
+          break;
+        case NtpSyncService::Error::NtpTimeout:
+          message_ = std::string(tr(STR_SYNC_FAILED)) + ": NTP timeout";
+          phase_ = Phase::Failed;
+          break;
+        case NtpSyncService::Error::BadEpoch:
+          message_ = std::string(tr(STR_SYNC_FAILED)) + ": bad time";
+          phase_ = Phase::Failed;
+          break;
         default:
           message_ = tr(STR_SYNC_FAILED);
           phase_ = Phase::Failed;
