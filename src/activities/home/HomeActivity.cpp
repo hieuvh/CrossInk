@@ -1179,6 +1179,19 @@ void HomeActivity::loop() {
 }
 
 void HomeActivity::render(RenderLock&&) {
+  // Snapshot the wall-clock minute we are ABOUT to render BEFORE drawHeader
+  // is called. Capturing after displayBuffer() races with the e-ink flush
+  // (50-500ms) — if the minute ticks during the flush, we'd record the new
+  // minute while the screen still shows the old one, and stay stale until
+  // the NEXT minute boundary. Capturing before drawHeader keeps the snapshot
+  // tied to what the user actually sees.
+  if (SETTINGS.showHeaderClock) {
+    int64_t epoch;
+    if (TimeService::instance().getCurrentUtcEpoch(&epoch)) {
+      lastShownClockMinute_ = epoch / 60;
+    }
+  }
+
   const auto& metrics = UITheme::getInstance().getMetrics();
   const auto pageWidth = renderer.getScreenWidth();
   const auto pageHeight = renderer.getScreenHeight();
@@ -1277,15 +1290,6 @@ void HomeActivity::render(RenderLock&&) {
   GUI.drawButtonHints(renderer, labels.btn1, labels.btn2, labels.btn3, labels.btn4);
 
   renderer.displayBuffer();
-
-  // Bookkeeping for live-clock refresh: record the wall-clock minute we just
-  // committed so loop() can detect the next boundary without re-firing.
-  {
-    int64_t epoch;
-    if (TimeService::instance().getCurrentUtcEpoch(&epoch)) {
-      lastShownClockMinute_ = epoch / 60;
-    }
-  }
 
   if (!firstRenderDone) {
     firstRenderDone = true;
