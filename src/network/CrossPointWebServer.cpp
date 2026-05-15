@@ -22,6 +22,8 @@
 #include "SettingsList.h"
 #include "WebDAVHandler.h"
 #include "WifiCredentialStore.h"
+#include "services/NtpSyncService.h"
+#include "services/TimeService.h"
 #include "html/FilesPageHtml.generated.h"
 #include "html/FontsPageHtml.generated.h"
 #include "html/HomePageHtml.generated.h"
@@ -202,6 +204,11 @@ void CrossPointWebServer::begin() {
   server->on("/api/wifi", HTTP_GET, [this] { handleGetWifiNetworks(); });
   server->on("/api/wifi", HTTP_POST, [this] { handlePostWifiNetwork(); });
   server->on("/api/wifi/delete", HTTP_POST, [this] { handleDeleteWifiNetwork(); });
+
+  // Time endpoints
+  server->on("/api/time", HTTP_GET, [this] { handleGetTime(); });
+  server->on("/api/time", HTTP_POST, [this] { handlePostTime(); });
+  server->on("/api/time/sync", HTTP_POST, [this] { handlePostTimeSync(); });
 
   server->onNotFound([this] { handleNotFound(); });
   LOG_DBG("WEB", "[MEM] Free heap after route setup: %d bytes", ESP.getFreeHeap());
@@ -1510,6 +1517,49 @@ void CrossPointWebServer::handleDeleteWifiNetwork() {
 
   LOG_DBG("WEB", "Deleted Wi-Fi network at index %d (SSID: %s)", idx, ssid.c_str());
   server->send(200, "text/plain", "OK");
+}
+
+// ---- Time API ----
+
+void CrossPointWebServer::handleGetTime() {
+  char buf[16];
+  const bool ok = TimeService::instance().formatLocal(buf, sizeof(buf));
+  String body = "{\"local\":\"";
+  body += ok ? buf : "";
+  body += "\",\"hasTime\":";
+  body += ok ? "true" : "false";
+  body += "}";
+  server->send(200, "application/json", body);
+}
+
+void CrossPointWebServer::handlePostTime() {
+  if (!server->hasArg("epochMs")) {
+    server->send(400, "text/plain", "missing epochMs");
+    return;
+  }
+  const String s = server->arg("epochMs");
+  const long long ms = atoll(s.c_str());
+  const int64_t epoch = static_cast<int64_t>(ms / 1000);
+  TimeService::instance().onManualSet(epoch);
+  LOG_DBG("WEB", "Time manually set via API to epoch %lld", static_cast<long long>(epoch));
+  server->send(200, "application/json", "{\"ok\":true}");
+}
+
+void CrossPointWebServer::handlePostTimeSync() {
+  // syncOnce() is synchronous and may block ~5-13s while connecting Wi-Fi and
+  // performing SNTP. The web server is also synchronous (single-threaded WebServer),
+  // so the request loop will pause until the call returns. This matches the spec's
+  // foreground-sync model.
+  const auto result = NtpSyncService::instance().syncOnce();
+  if (result.ok) {
+    TimeService::instance().onNtpSynced(result.epoch, /*ignoreManualGuard=*/true);
+    String body = "{\"ok\":true,\"epoch\":";
+    body += String(static_cast<long long>(result.epoch));
+    body += "}";
+    server->send(200, "application/json", body);
+  } else {
+    server->send(503, "application/json", "{\"ok\":false}");
+  }
 }
 
 // WebSocket callback trampoline
