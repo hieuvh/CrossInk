@@ -175,7 +175,7 @@ void ActivityManager::tickHeaderClock() {
   // on the same two settings the header clock itself uses. Polled at most once
   // per second to keep RTC traffic (I2C on X3) bounded.
   if (!currentActivity || currentActivity->isReaderActivity()) return;
-  if (!SETTINGS.showHeaderClock || !SETTINGS.clockLiveRefresh) return;
+  if (!SETTINGS.showHeaderClock) return;
 
   const uint32_t nowMs = millis();
   if (nowMs - lastClockCheckMs_ < 1000) return;

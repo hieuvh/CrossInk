@@ -296,7 +296,6 @@ class CrossPointSettings {
   uint8_t hideBatteryPercentage = HIDE_NEVER;
   // Time / clock display
   uint8_t showHeaderClock = 1;     // 0 = hidden, 1 = shown
-  uint8_t clockLiveRefresh = 1;    // 0 = update on next interaction only, 1 = redraw Home each new minute
   uint8_t timeFormat = 0;          // 0 = 24h, 1 = 12h
   uint8_t utcOffsetIndex = 12;     // 0..26 → UTC-12..UTC+14 (12 = UTC+0)
   // Long-press page turn button behavior

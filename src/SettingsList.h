@@ -135,8 +135,6 @@ inline std::vector<SettingInfo> getSettingsList(const SdCardFontRegistry* regist
         // --- Time ---
         SettingInfo::Toggle(StrId::STR_SHOW_HEADER_CLOCK, &CrossPointSettings::showHeaderClock, "showHeaderClock",
                             StrId::STR_CAT_TIME),
-        SettingInfo::Toggle(StrId::STR_CLOCK_LIVE_REFRESH, &CrossPointSettings::clockLiveRefresh, "clockLiveRefresh",
-                            StrId::STR_CAT_TIME),
         SettingInfo::Enum(StrId::STR_TIME_FORMAT, &CrossPointSettings::timeFormat,
                           {StrId::STR_TIME_FORMAT_24H, StrId::STR_TIME_FORMAT_12H}, "timeFormat", StrId::STR_CAT_TIME),
         SettingInfo::Enum(StrId::STR_TIMEZONE, &CrossPointSettings::utcOffsetIndex,

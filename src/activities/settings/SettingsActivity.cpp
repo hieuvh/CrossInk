@@ -129,7 +129,6 @@ void SettingsActivity::rebuildSettingsLists() {
   systemSettings.push_back(SettingInfo::Action(StrId::STR_OPDS_SERVERS, SettingAction::OPDSBrowser));
   systemSettings.push_back(SettingInfo::SectionHeader(StrId::STR_CAT_TIME));
   addSystemSetting(StrId::STR_SHOW_HEADER_CLOCK);
-  addSystemSetting(StrId::STR_CLOCK_LIVE_REFRESH);
   addSystemSetting(StrId::STR_TIME_FORMAT);
   addSystemSetting(StrId::STR_TIMEZONE);
   systemSettings.push_back(SettingInfo::Action(StrId::STR_SYNC_TIME_NOW, SettingAction::SyncTimeNow));
