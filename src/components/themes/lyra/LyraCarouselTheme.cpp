@@ -64,7 +64,7 @@ constexpr int kCenterOutlineW = 4;  // white ring around centre cover
 // Icon row — icons are 32×32 bitmaps; drawIcon does NOT scale
 constexpr int kMenuIconSize = 32;  // must match actual bitmap dimensions
 constexpr int kMenuIconPad = 14;   // symmetric vertical padding → tile height = 60
-constexpr int kHighlightPad = 12;   // highlight padding around the selected icon
+constexpr int kHighlightPad = 12;  // highlight padding around the selected icon
 constexpr int kHighlightCornerRadius = 99;
 // Row is anchored to the bottom of the screen, just above button hints
 constexpr int kButtonHintsH = LyraCarouselMetrics::values.buttonHintsHeight;
@@ -115,19 +115,6 @@ Rect computeCenterCoverSlotRect(const GfxRenderer& renderer, Rect rect, const st
   const int centerDrawY = centerTileY + kCenterCoverTopInset - kCarouselVerticalLift;
   const int centerX = (screenW - kDisplayCenterW) / 2;
   return Rect{centerX, centerDrawY, kDisplayCenterW, kDisplayCenterH};
-}
-
-void drawMenuBookmarkIcon(const GfxRenderer& renderer, int x, int y, bool selected) {
-  constexpr int ribbonWidth = 16;
-  constexpr int ribbonHeight = 22;
-  constexpr int notchSize = 6;
-  const int iconX = x + (kMenuIconSize - ribbonWidth) / 2;
-  const int iconY = y + 4;
-  const int centerX = iconX + ribbonWidth / 2;
-
-  const int polyX[5] = {iconX, iconX + ribbonWidth, iconX + ribbonWidth, centerX, iconX};
-  const int polyY[5] = {iconY, iconY, iconY + ribbonHeight, iconY + ribbonHeight - notchSize, iconY + ribbonHeight};
-  renderer.fillPolygon(polyX, polyY, 5, !selected);
 }
 
 void drawPerspectiveOutline(const GfxRenderer& renderer, int x, int y, int width, int leftHeight, int rightHeight) {
@@ -454,13 +441,9 @@ void LyraCarouselTheme::drawButtonMenu(GfxRenderer& renderer, Rect rect, int but
 
     if (rowIcon != nullptr) {
       const UIIcon icon = rowIcon(i);
-      if (icon == UIIcon::BookmarkIcon) {
-        drawMenuBookmarkIcon(renderer, iconX, iconY, false);
-      } else {
-        const uint8_t* bmp = iconForName(icon, kMenuIconSize);
-        if (bmp != nullptr) {
-          renderer.drawIcon(bmp, iconX, iconY, kMenuIconSize, kMenuIconSize);
-        }
+      const uint8_t* bmp = iconForName(icon, kMenuIconSize);
+      if (bmp != nullptr) {
+        renderer.drawIcon(bmp, iconX, iconY, kMenuIconSize, kMenuIconSize);
       }
     }
 
