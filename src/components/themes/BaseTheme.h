@@ -195,4 +195,15 @@ class BaseTheme {
   // Returns 'L'/'R'/'U'/'D' if `label` is one of the four triangle UTF-8 strings;
   // returns '\0' otherwise.
   static char triangleDirectionForLabel(const char* label);
+
+  // Parses a label that may carry a triangle (◀▶▲▼) at its leading or trailing
+  // edge — e.g. "◀ Back", "Next Page ▶", or just "◀". When found, the caller
+  // can render the triangle as a bitmap icon alongside the remaining text.
+  struct TriangleAffix {
+    char direction = '\0';   // 'L'/'R'/'U'/'D', or '\0' when no triangle present.
+    bool isLeading = false;  // true: triangle before text; false: triangle after text.
+    const char* textStart = nullptr;
+    size_t textLen = 0;      // length of the text portion (after stripping triangle + adjacent space).
+  };
+  static TriangleAffix parseTriangleAffix(const char* label);
 };

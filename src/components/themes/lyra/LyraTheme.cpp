@@ -420,12 +420,28 @@ void LyraTheme::drawButtonHints(GfxRenderer& renderer, const char* btn1, const c
       renderer.fillRoundedRect(x, pageHeight - buttonY, buttonWidth, buttonHeight, cornerRadius, Color::White);
       renderer.drawRoundedRect(x, pageHeight - buttonY, buttonWidth, buttonHeight, 1, cornerRadius, true, true, false,
                                false, true);
-      const char arrow = triangleDirectionForLabel(labels[i]);
-      if (arrow != '\0') {
+      const TriangleAffix tri = parseTriangleAffix(labels[i]);
+      if (tri.direction != '\0' && tri.textLen == 0) {
         constexpr int kArrowSize = 12;
         const int iconX = x + (buttonWidth - kArrowSize) / 2;
         const int iconY = pageHeight - buttonY + (buttonHeight - kArrowSize) / 2;
-        drawTriangleArrow(renderer, iconX, iconY, kArrowSize, arrow);
+        drawTriangleArrow(renderer, iconX, iconY, kArrowSize, tri.direction);
+      } else if (tri.direction != '\0') {
+        constexpr int kArrowSize = 10;
+        constexpr int kIconGap = 4;
+        const std::string text(tri.textStart, tri.textLen);
+        const int textWidth = renderer.getTextWidth(SMALL_FONT_ID, text.c_str());
+        const int groupWidth = kArrowSize + kIconGap + textWidth;
+        int curX = x + (buttonWidth - groupWidth) / 2;
+        const int iconY = pageHeight - buttonY + (buttonHeight - kArrowSize) / 2;
+        const int textY = pageHeight - buttonY + textYOffset;
+        if (tri.isLeading) {
+          drawTriangleArrow(renderer, curX, iconY, kArrowSize, tri.direction);
+          renderer.drawText(SMALL_FONT_ID, curX + kArrowSize + kIconGap, textY, text.c_str());
+        } else {
+          renderer.drawText(SMALL_FONT_ID, curX, textY, text.c_str());
+          drawTriangleArrow(renderer, curX + textWidth + kIconGap, iconY, kArrowSize, tri.direction);
+        }
       } else {
         const int textWidth = renderer.getTextWidth(SMALL_FONT_ID, labels[i]);
         const int textX = x + (buttonWidth - 1 - textWidth) / 2;

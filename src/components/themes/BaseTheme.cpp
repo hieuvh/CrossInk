@@ -56,14 +56,64 @@ void BaseTheme::drawTriangleArrow(const GfxRenderer& renderer, int x, int y, int
   }
 }
 
+namespace {
+// UTF-8 byte sequences for ◀ ▶ ▲ ▼ (U+25C0 / U+25B6 / U+25B2 / U+25BC).
+struct TriangleGlyph {
+  const char* utf8;
+  char dir;
+};
+constexpr TriangleGlyph kTriangleGlyphs[] = {
+    {"\xE2\x97\x80", 'L'},
+    {"\xE2\x96\xB6", 'R'},
+    {"\xE2\x96\xB2", 'U'},
+    {"\xE2\x96\xBC", 'D'},
+};
+constexpr size_t kTriangleUtf8Bytes = 3;
+}  // namespace
+
 char BaseTheme::triangleDirectionForLabel(const char* label) {
   if (label == nullptr) return '\0';
-  // UTF-8 byte sequences for ◀ ▶ ▲ ▼ (U+25C0 / U+25B6 / U+25B2 / U+25BC).
-  if (strcmp(label, "\xE2\x97\x80") == 0) return 'L';
-  if (strcmp(label, "\xE2\x96\xB6") == 0) return 'R';
-  if (strcmp(label, "\xE2\x96\xB2") == 0) return 'U';
-  if (strcmp(label, "\xE2\x96\xBC") == 0) return 'D';
+  for (const auto& g : kTriangleGlyphs) {
+    if (strcmp(label, g.utf8) == 0) return g.dir;
+  }
   return '\0';
+}
+
+BaseTheme::TriangleAffix BaseTheme::parseTriangleAffix(const char* label) {
+  TriangleAffix r;
+  r.textStart = label;
+  if (label == nullptr) return r;
+  const size_t len = strlen(label);
+  if (len == 0) return r;
+
+  // Leading triangle? Strip it (3 bytes) and any single space that follows.
+  for (const auto& g : kTriangleGlyphs) {
+    if (len >= kTriangleUtf8Bytes && strncmp(label, g.utf8, kTriangleUtf8Bytes) == 0) {
+      r.direction = g.dir;
+      r.isLeading = true;
+      size_t off = kTriangleUtf8Bytes;
+      while (off < len && label[off] == ' ') ++off;
+      r.textStart = label + off;
+      r.textLen = len - off;
+      return r;
+    }
+  }
+  // Trailing triangle? Last 3 bytes match, strip trailing whitespace ahead of it.
+  if (len >= kTriangleUtf8Bytes) {
+    const char* tail = label + len - kTriangleUtf8Bytes;
+    for (const auto& g : kTriangleGlyphs) {
+      if (strncmp(tail, g.utf8, kTriangleUtf8Bytes) == 0) {
+        r.direction = g.dir;
+        r.isLeading = false;
+        size_t textEnd = len - kTriangleUtf8Bytes;
+        while (textEnd > 0 && label[textEnd - 1] == ' ') --textEnd;
+        r.textStart = label;
+        r.textLen = textEnd;
+        return r;
+      }
+    }
+  }
+  return r;
 }
 
 void BaseTheme::drawBatteryLightningBolt(const GfxRenderer& renderer, int boltX, int boltY) {
@@ -186,12 +236,30 @@ void BaseTheme::drawButtonHints(GfxRenderer& renderer, const char* btn1, const c
       const int x = buttonPositions[invertText ? 3 - i : i];
       renderer.fillRect(x, pageHeight - buttonY, buttonWidth, buttonHeight, false);
       renderer.drawRect(x, pageHeight - buttonY, buttonWidth, buttonHeight);
-      const char arrow = triangleDirectionForLabel(labels[i]);
-      if (arrow != '\0') {
+      const TriangleAffix tri = parseTriangleAffix(labels[i]);
+      if (tri.direction != '\0' && tri.textLen == 0) {
+        // Pure triangle label — center the icon.
         constexpr int kArrowSize = 12;
         const int iconX = x + (buttonWidth - kArrowSize) / 2;
         const int iconY = pageHeight - buttonY + (buttonHeight - kArrowSize) / 2;
-        drawTriangleArrow(renderer, iconX, iconY, kArrowSize, arrow);
+        drawTriangleArrow(renderer, iconX, iconY, kArrowSize, tri.direction);
+      } else if (tri.direction != '\0') {
+        // Triangle + text combo — center icon-and-text as a group inside the button.
+        constexpr int kArrowSize = 10;
+        constexpr int kIconGap = 4;
+        const std::string text(tri.textStart, tri.textLen);
+        const int textWidth = renderer.getTextWidth(UI_10_FONT_ID, text.c_str());
+        const int groupWidth = kArrowSize + kIconGap + textWidth;
+        int curX = x + (buttonWidth - groupWidth) / 2;
+        const int iconY = pageHeight - buttonY + (buttonHeight - kArrowSize) / 2;
+        const int textY = pageHeight - buttonY + textYOffset;
+        if (tri.isLeading) {
+          drawTriangleArrow(renderer, curX, iconY, kArrowSize, tri.direction);
+          renderer.drawText(UI_10_FONT_ID, curX + kArrowSize + kIconGap, textY, text.c_str());
+        } else {
+          renderer.drawText(UI_10_FONT_ID, curX, textY, text.c_str());
+          drawTriangleArrow(renderer, curX + textWidth + kIconGap, iconY, kArrowSize, tri.direction);
+        }
       } else {
         const int textWidth = renderer.getTextWidth(UI_10_FONT_ID, labels[i]);
         const int textX = x + (buttonWidth - 1 - textWidth) / 2;
