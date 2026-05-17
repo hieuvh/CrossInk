@@ -497,6 +497,19 @@ void LyraCarouselTheme::drawButtonMenuSelectionOverlay(const GfxRenderer& render
   renderer.drawRoundedRect(iconX - kHighlightPad / 2, iconY - kHighlightPad, highlightSize, highlightSize, 2,
                            kHighlightCornerRadius, true);
 
+  // Cached carousel frames were built with selectedIndex=-1 (no label drawn),
+  // so the label row is blank in the base image. Paint the selected item's
+  // label here as part of the overlay; without this, navigating into the
+  // button menu row leaves the label area empty.
+  if (buttonLabel != nullptr) {
+    const int screenW = renderer.getScreenWidth();
+    renderer.fillRect(0, metrics.labelY, screenW, metrics.labelLineHeight, false);
+    const std::string labelStr = buttonLabel(selectedIndex);
+    const auto centeredLabel = renderer.truncatedText(kMenuLabelFontId, labelStr.c_str(), screenW - 40);
+    const int labelWidth = renderer.getTextWidth(kMenuLabelFontId, centeredLabel.c_str(), EpdFontFamily::REGULAR);
+    renderer.drawText(kMenuLabelFontId, (screenW - labelWidth) / 2, metrics.labelY + 2, centeredLabel.c_str(), true,
+                      EpdFontFamily::REGULAR);
+  }
 }
 
 // ---------------------------------------------------------------------------
