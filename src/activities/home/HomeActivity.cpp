@@ -1058,28 +1058,9 @@ bool HomeActivity::preRenderCarouselFrames(bool showProgressPopup) {
 }
 
 void HomeActivity::loop() {
-  // Live header-clock refresh: trigger a redraw on each wall-clock minute boundary.
-  // Polled at most once per second to keep RTC traffic (I2C on X3) bounded.
-  // Loop is the source of truth for lastShownClockMinute_ — set it BEFORE
-  // requestUpdate() so a second loop tick before render() runs doesn't fire
-  // a redundant trigger. (render() also snapshots, so toggling showHeaderClock
-  // off-then-on still self-syncs.)
-  if (SETTINGS.showHeaderClock && SETTINGS.clockLiveRefresh) {
-    const uint32_t nowMs = millis();
-    if (nowMs - lastClockCheckMs_ >= 1000) {
-      lastClockCheckMs_ = nowMs;
-      int64_t epoch;
-      if (TimeService::instance().getCurrentUtcEpoch(&epoch)) {
-        const int64_t currentMinute = epoch / 60;
-        if (currentMinute != lastShownClockMinute_) {
-          LOG_DBG("CLK", "minute %lld -> %lld, requesting redraw",
-                  static_cast<long long>(lastShownClockMinute_), static_cast<long long>(currentMinute));
-          lastShownClockMinute_ = currentMinute;
-          requestUpdate();
-        }
-      }
-    }
-  }
+  // Live header-clock refresh is centralized in ActivityManager::tickHeaderClock,
+  // so every activity gets it (except reader). HomeActivity no longer needs its
+  // own per-minute trigger here.
 
   const bool isCarousel =
       static_cast<CrossPointSettings::UI_THEME>(SETTINGS.uiTheme) == CrossPointSettings::UI_THEME::LYRA_CAROUSEL;
@@ -1186,19 +1167,6 @@ void HomeActivity::loop() {
 }
 
 void HomeActivity::render(RenderLock&&) {
-  // Snapshot the wall-clock minute we are ABOUT to render BEFORE drawHeader
-  // is called. Capturing after displayBuffer() races with the e-ink flush
-  // (50-500ms) — if the minute ticks during the flush, we'd record the new
-  // minute while the screen still shows the old one, and stay stale until
-  // the NEXT minute boundary. Capturing before drawHeader keeps the snapshot
-  // tied to what the user actually sees.
-  if (SETTINGS.showHeaderClock) {
-    int64_t epoch;
-    if (TimeService::instance().getCurrentUtcEpoch(&epoch)) {
-      lastShownClockMinute_ = epoch / 60;
-    }
-  }
-
   const auto& metrics = UITheme::getInstance().getMetrics();
   const auto pageWidth = renderer.getScreenWidth();
   const auto pageHeight = renderer.getScreenHeight();

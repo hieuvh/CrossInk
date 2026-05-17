@@ -23,10 +23,6 @@ class HomeActivity final : public Activity {
   ButtonNavigator buttonNavigator;
   int selectorIndex = 0;
   int lastCarouselBookIndex = 0;  // remembered position when leaving carousel row
-  // Live header-clock refresh state. Polled in loop() at most once per second;
-  // requestUpdate() is called only when the wall-clock minute actually changes.
-  int64_t lastShownClockMinute_ = -1;
-  uint32_t lastClockCheckMs_ = 0;
   bool recentsLoading = false;
   bool recentsLoaded = false;
   bool firstRenderDone = false;

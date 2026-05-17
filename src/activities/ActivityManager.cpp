@@ -22,6 +22,10 @@
 #include "settings/SettingsActivity.h"
 #include "util/FullScreenMessageActivity.h"
 
+#include "Activity.h"
+#include "CrossPointSettings.h"
+#include "services/TimeService.h"
+
 void ActivityManager::begin() {
   xTaskCreate(&renderTaskTrampoline, "ActivityManagerRender",
               16384,  // Stack size — increased from 8192; createSectionFile() puts ChapterHtmlSlimParser (~700 bytes)
@@ -66,6 +70,7 @@ void ActivityManager::loop() {
     mappedInput.setPowerAsConfirmInReaderMode(currentActivity->allowPowerAsConfirmInReaderMode());
     // Note: do not hold a lock here, the loop() method must be responsible for acquire one if needed
     currentActivity->loop();
+    tickHeaderClock();
   } else {
     mappedInput.setPowerAsConfirmInReaderMode(false);
   }
@@ -162,6 +167,28 @@ void ActivityManager::loop() {
       xTaskNotify(renderTaskHandle, 1, eIncrement);
     }
   }
+}
+
+void ActivityManager::tickHeaderClock() {
+  // Cross-activity per-minute redraw so the header clock advances without user
+  // input. Skipped on reader activities to avoid flashing the page, and gated
+  // on the same two settings the header clock itself uses. Polled at most once
+  // per second to keep RTC traffic (I2C on X3) bounded.
+  if (!currentActivity || currentActivity->isReaderActivity()) return;
+  if (!SETTINGS.showHeaderClock || !SETTINGS.clockLiveRefresh) return;
+
+  const uint32_t nowMs = millis();
+  if (nowMs - lastClockCheckMs_ < 1000) return;
+  lastClockCheckMs_ = nowMs;
+
+  int64_t epoch;
+  if (!TimeService::instance().getCurrentUtcEpoch(&epoch)) return;
+
+  const int64_t currentMinute = epoch / 60;
+  if (currentMinute == lastShownClockMinute_) return;
+
+  lastShownClockMinute_ = currentMinute;
+  requestUpdate();
 }
 
 void ActivityManager::exitActivity(const RenderLock& lock) {
