@@ -79,14 +79,32 @@ void BaseTheme::fillBatteryIcon(const GfxRenderer& renderer, Rect rect, uint16_t
   }
 }
 
+namespace {
+// Format the header clock into `out`. Returns true if a string was produced.
+// Gated on SETTINGS.showHeaderClock so this is a no-op when the user has
+// turned the clock off.
+bool buildHeaderClock(char* out, size_t cap) {
+  if (!SETTINGS.showHeaderClock) return false;
+  return TimeService::instance().formatLocal(out, cap);
+}
+}  // namespace
+
 void BaseTheme::drawBatteryLeft(const GfxRenderer& renderer, Rect rect, const bool showPercentage) const {
-  // Left aligned: icon on left, percentage on right (reader mode)
+  // Left aligned: icon on left, percentage on right (reader mode).
+  // Layout: [icon] [%] [clock]
   const uint16_t percentage = powerManager.getBatteryPercentage();
   const int y = rect.y + 6;
 
+  int cursorX = rect.x + batteryPercentSpacing + rect.width;
   if (showPercentage) {
     const auto percentageText = std::to_string(percentage) + "%";
-    renderer.drawText(SMALL_FONT_ID, rect.x + batteryPercentSpacing + rect.width, rect.y, percentageText.c_str());
+    renderer.drawText(SMALL_FONT_ID, cursorX, rect.y, percentageText.c_str());
+    cursorX += renderer.getTextWidth(SMALL_FONT_ID, percentageText.c_str()) + batteryPercentSpacing;
+  }
+
+  char clockBuf[16];
+  if (buildHeaderClock(clockBuf, sizeof(clockBuf))) {
+    renderer.drawText(SMALL_FONT_ID, cursorX, rect.y, clockBuf);
   }
 
   const Rect iconRect{rect.x, y, rect.width, rect.height};
@@ -95,15 +113,26 @@ void BaseTheme::drawBatteryLeft(const GfxRenderer& renderer, Rect rect, const bo
 }
 
 void BaseTheme::drawBatteryRight(const GfxRenderer& renderer, Rect rect, const bool showPercentage) const {
-  // Right aligned: percentage on left, icon on right (UI headers)
-  // rect.x is already positioned for the icon (drawHeader calculated it)
+  // Right aligned: percentage on left, icon on right (UI headers).
+  // rect.x is already positioned for the icon (drawHeader calculated it).
+  // Layout: [clock] [%] [icon]  — both clock and % stack to the LEFT of icon.
   const uint16_t percentage = powerManager.getBatteryPercentage();
   const int y = rect.y + 6;
 
+  int rightEdge = rect.x;  // text right-anchors against this and walks left
   if (showPercentage) {
     const auto percentageText = std::to_string(percentage) + "%";
     const int textWidth = renderer.getTextWidth(SMALL_FONT_ID, percentageText.c_str());
-    renderer.drawText(SMALL_FONT_ID, rect.x - textWidth - batteryPercentSpacing, rect.y, percentageText.c_str());
+    const int textX = rightEdge - textWidth - batteryPercentSpacing;
+    renderer.drawText(SMALL_FONT_ID, textX, rect.y, percentageText.c_str());
+    rightEdge = textX;
+  }
+
+  char clockBuf[16];
+  if (buildHeaderClock(clockBuf, sizeof(clockBuf))) {
+    const int clockWidth = renderer.getTextWidth(SMALL_FONT_ID, clockBuf);
+    const int clockX = rightEdge - clockWidth - batteryPercentSpacing;
+    renderer.drawText(SMALL_FONT_ID, clockX, rect.y, clockBuf);
   }
 
   const Rect iconRect{rect.x, y, rect.width, rect.height};
@@ -357,15 +386,9 @@ void BaseTheme::drawHeader(const GfxRenderer& renderer, Rect rect, const char* t
   renderer.fillRect(rect.x + rect.width - maxBatteryWidth, rect.y + 5, maxBatteryWidth,
                     BaseMetrics::values.batteryHeight + 10, false);
 
-  // Header clock (Home only — Home passes title=nullptr).
-  // Drawn level with the battery percentage on the right (same Y, same font).
-  if (title == nullptr && SETTINGS.showHeaderClock) {
-    char clockBuf[16];
-    if (TimeService::instance().formatLocal(clockBuf, sizeof(clockBuf))) {
-      renderer.drawText(SMALL_FONT_ID, rect.x + BaseMetrics::values.contentSidePadding,
-                        rect.y + 5, clockBuf, true);
-    }
-  }
+  // Header clock now travels with drawBatteryRight (drawn next to the battery
+  // percentage on the right side), so it appears on every screen that shows
+  // the battery widget, not just Home.
 
   const bool showBatteryPercentage =
       SETTINGS.hideBatteryPercentage != CrossPointSettings::HIDE_BATTERY_PERCENTAGE::HIDE_ALWAYS;
