@@ -7,6 +7,8 @@
 #include <esp_sntp.h>
 #include <sys/time.h>
 
+#include <atomic>
+
 #include "Logging.h"
 #include "WifiCredentialStore.h"
 // Sanity bounds for the synced epoch — defined in lib/hal/HalRtc.h (Task 4 moved them there).
@@ -18,6 +20,12 @@ NtpSyncService& NtpSyncService::instance() {
 }
 
 namespace {
+// SNTP fires this callback exactly once per successful sync. Polling
+// sntp_get_sync_status() races with the SDK clearing the flag back to RESET,
+// so we use the callback to latch a flag we can poll without losing the edge.
+std::atomic<bool> g_sntpSynced{false};
+void sntpSyncedCallback(struct timeval* /*tv*/) { g_sntpSynced.store(true); }
+
 const WifiCredential* pickCredential() {
   auto& store = WifiCredentialStore::getInstance();
   const auto& creds = store.getCredentials();
@@ -82,12 +90,18 @@ NtpSyncService::Result NtpSyncService::syncOnce(uint32_t wifiTimeoutMs, uint32_t
   LOG_INF("NTP", "Wi-Fi up (%s) ip=%d.%d.%d.%d, starting SNTP", cred->ssid.c_str(), ip[0], ip[1], ip[2], ip[3]);
 
   if (esp_sntp_enabled()) esp_sntp_stop();
+  g_sntpSynced.store(false);
   esp_sntp_setoperatingmode(ESP_SNTP_OPMODE_POLL);
+  // Multiple servers so a slow/unreachable pool.ntp.org rotation isn't a
+  // single point of failure. SNTP tries them in order on each poll cycle.
   esp_sntp_setservername(0, "pool.ntp.org");
+  esp_sntp_setservername(1, "time.google.com");
+  esp_sntp_setservername(2, "time.cloudflare.com");
+  sntp_set_time_sync_notification_cb(sntpSyncedCallback);
   esp_sntp_init();
 
   waited = 0;
-  while (sntp_get_sync_status() != SNTP_SYNC_STATUS_COMPLETED && waited < ntpTimeoutMs) {
+  while (!g_sntpSynced.load() && waited < ntpTimeoutMs) {
     if (cancelFlag_.load()) {
       if (tearDownWifi) wifiOff();
       return {false, 0, Error::NtpTimeout};
@@ -96,9 +110,10 @@ NtpSyncService::Result NtpSyncService::syncOnce(uint32_t wifiTimeoutMs, uint32_t
     waited += 100;
   }
 
-  if (sntp_get_sync_status() != SNTP_SYNC_STATUS_COMPLETED) {
-    LOG_ERR("NTP", "SNTP timeout after %lums (status=%d)", static_cast<unsigned long>(waited),
-            int(sntp_get_sync_status()));
+  if (!g_sntpSynced.load()) {
+    LOG_ERR("NTP", "SNTP timeout after %lums (sync_status=%d, server0=%s reach=%u)",
+            static_cast<unsigned long>(waited), int(sntp_get_sync_status()),
+            sntp_getservername(0) ? sntp_getservername(0) : "?", unsigned(sntp_getreachability(0)));
     if (tearDownWifi) wifiOff();
     return {false, 0, Error::NtpTimeout};
   }
