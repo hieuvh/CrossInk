@@ -27,6 +27,7 @@
 #include "OpdsServerStore.h"
 #include "RecentBooksStore.h"
 #include "SdCardFontSystem.h"
+#include "WifiCredentialStore.h"
 #include "activities/Activity.h"
 #include "activities/ActivityManager.h"
 #include "activities/reader/KOReaderSyncActivity.h"
@@ -519,6 +520,13 @@ void setup() {
 
   APP_STATE.loadFromFile();
   RECENT_BOOKS.loadFromFile();
+
+  // Load saved Wi-Fi credentials so the cold-boot NTP task (X4) and the
+  // "Sync time now" action can find them. Previously this only happened
+  // lazily inside WifiSelectionActivity::onEnter, so users who never opened
+  // the Wi-Fi screen this session would get a spurious "No saved Wi-Fi"
+  // error from Sync time now.
+  WIFI_STORE.loadFromFile();
 
   TimeService::instance().boot(gpio.deviceIsX3() ? TimeService::DeviceType::X3
                                                  : TimeService::DeviceType::X4);
