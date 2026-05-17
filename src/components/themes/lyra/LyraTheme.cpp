@@ -33,6 +33,7 @@
 #include "components/icons/text24.h"
 #include "components/icons/transfer.h"
 #include "components/icons/wifi.h"
+#include "components/icons/bookmark.h"
 #include "fontIds.h"
 
 // Internal constants
@@ -86,6 +87,8 @@ const uint8_t* LyraTheme::iconForName(UIIcon icon, uint32_t size) {
         return WifiIcon;
       case UIIcon::Hotspot:
         return HotspotIcon;
+      case UIIcon::BookmarkIcon:
+        return Bookmark2Icon;
       default:
         return nullptr;
     }
@@ -417,9 +420,17 @@ void LyraTheme::drawButtonHints(GfxRenderer& renderer, const char* btn1, const c
       renderer.fillRoundedRect(x, pageHeight - buttonY, buttonWidth, buttonHeight, cornerRadius, Color::White);
       renderer.drawRoundedRect(x, pageHeight - buttonY, buttonWidth, buttonHeight, 1, cornerRadius, true, true, false,
                                false, true);
-      const int textWidth = renderer.getTextWidth(SMALL_FONT_ID, labels[i]);
-      const int textX = x + (buttonWidth - 1 - textWidth) / 2;
-      renderer.drawText(SMALL_FONT_ID, textX, pageHeight - buttonY + textYOffset, labels[i]);
+      const char arrow = triangleDirectionForLabel(labels[i]);
+      if (arrow != '\0') {
+        constexpr int kArrowSize = 12;
+        const int iconX = x + (buttonWidth - kArrowSize) / 2;
+        const int iconY = pageHeight - buttonY + (buttonHeight - kArrowSize) / 2;
+        drawTriangleArrow(renderer, iconX, iconY, kArrowSize, arrow);
+      } else {
+        const int textWidth = renderer.getTextWidth(SMALL_FONT_ID, labels[i]);
+        const int textX = x + (buttonWidth - 1 - textWidth) / 2;
+        renderer.drawText(SMALL_FONT_ID, textX, pageHeight - buttonY + textYOffset, labels[i]);
+      }
     } else {
       // Draw the filled background and border for a SMALL-sized button
       const int smallButtonY = invertText ? 0 : pageHeight - smallButtonHeight;
