@@ -194,9 +194,6 @@ class BaseTheme {
   // direction: 'L' / 'R' / 'U' / 'D'. Used by drawButtonHints to render ◀▶▲▼
   // labels as actual icons instead of relying on Unicode glyphs in the font.
   static void drawTriangleArrow(const GfxRenderer& renderer, int x, int y, int size, char direction);
-  // Returns 'L'/'R'/'U'/'D' if `label` is one of the four triangle UTF-8 strings;
-  // returns '\0' otherwise.
-  static char triangleDirectionForLabel(const char* label);
 
   // Parses a label that may carry a triangle (◀▶▲▼) at its leading or trailing
   // edge — e.g. "◀ Back", "Next Page ▶", or just "◀". When found, the caller

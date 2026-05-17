@@ -311,10 +311,17 @@ void LyraTheme::drawListWithMetrics(const GfxRenderer& renderer, Rect rect, int 
     const bool foreground = !(invertSelectedRows && selectedRow);
 
     if (isHeaderRow(i)) {
-      // Section header: bold uppercase label + divider line below
+      // Section header: bold uppercase label + divider line below.
+      // toupper is applied byte-by-byte, but we MUST skip UTF-8 continuation
+      // bytes (>= 0x80) or we'll mangle multi-byte sequences — e.g. the byte
+      // 0xE1 in Vietnamese "ể" (0xE1 0xBB 0x83) would become 0xC1, producing
+      // invalid UTF-8 that the renderer decodes as wrong glyphs (Vietnamese
+      // section headers like "Giao diện" / "Phông chữ" / "Bố cục" then had
+      // their first ASCII letter come out blank or substituted).
       std::string label = rowTitle(i);
-      std::transform(label.begin(), label.end(), label.begin(),
-                     [](unsigned char c) { return static_cast<char>(std::toupper(c)); });
+      std::transform(label.begin(), label.end(), label.begin(), [](unsigned char c) {
+        return c < 0x80 ? static_cast<char>(std::toupper(c)) : static_cast<char>(c);
+      });
       auto truncated = renderer.truncatedText(sectionHeaderFontId, label.c_str(),
                                               contentWidth - metrics.contentSidePadding * 2, EpdFontFamily::BOLD);
       const int headerTextY = itemY;

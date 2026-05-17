@@ -71,14 +71,6 @@ constexpr TriangleGlyph kTriangleGlyphs[] = {
 constexpr size_t kTriangleUtf8Bytes = 3;
 }  // namespace
 
-char BaseTheme::triangleDirectionForLabel(const char* label) {
-  if (label == nullptr) return '\0';
-  for (const auto& g : kTriangleGlyphs) {
-    if (strcmp(label, g.utf8) == 0) return g.dir;
-  }
-  return '\0';
-}
-
 int BaseTheme::drawListRowTitle(const GfxRenderer& renderer, int x, int y, int fontId,
                                 const std::string& label, int maxWidth, bool foreground,
                                 EpdFontFamily::Style family) {
@@ -455,7 +447,13 @@ void BaseTheme::drawList(const GfxRenderer& renderer, Rect rect, int itemCount, 
     const auto font = UI_10_FONT_ID;
     const int tx = rect.x + BaseMetrics::values.contentSidePadding;
     if (isHeader && isHeader(i)) {
-      drawListRowTitle(renderer, tx, itemY, font, itemName, rowTextWidth, true, EpdFontFamily::BOLD);
+      // Section headers: do NOT route through drawListRowTitle (no triangle
+      // detection needed for section labels, and routing them through there
+      // caused first-char rendering corruption on multi-byte Vietnamese
+      // strings — first letter of "Giao diện", "Phông chữ", "Bố cục" etc.
+      // would render as blank or wrong glyph).
+      const auto item = renderer.truncatedText(font, itemName.c_str(), rowTextWidth);
+      renderer.drawText(font, tx, itemY, item.c_str(), true, EpdFontFamily::BOLD);
       continue;
     }
     const int titleWidth = drawListRowTitle(renderer, tx, itemY, font, itemName, rowTextWidth, i != selectedIndex);
