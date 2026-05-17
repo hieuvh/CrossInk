@@ -19,7 +19,6 @@
 #include "OtaUpdateActivity.h"
 #include "SdCardFontGlobals.h"
 #include "SdFirmwareUpdateActivity.h"
-#include "SetTimeActivity.h"
 #include "SettingsList.h"
 #include "StatusBarSettingsActivity.h"
 #include "SyncTimeNowActivity.h"
@@ -134,7 +133,6 @@ void SettingsActivity::rebuildSettingsLists() {
   addSystemSetting(StrId::STR_TIME_FORMAT);
   addSystemSetting(StrId::STR_TIMEZONE);
   systemSettings.push_back(SettingInfo::Action(StrId::STR_SYNC_TIME_NOW, SettingAction::SyncTimeNow));
-  systemSettings.push_back(SettingInfo::Action(StrId::STR_SET_TIME_MANUAL, SettingAction::SetTimeManual));
   systemSettings.push_back(SettingInfo::SectionHeader(StrId::STR_SECT_MAINTENANCE));
   systemSettings.push_back(SettingInfo::Action(StrId::STR_CLEAR_READING_CACHE, SettingAction::ClearCache));
   // systemSettings.push_back(SettingInfo::Action(StrId::STR_CHECK_UPDATES, SettingAction::CheckForUpdates));
@@ -379,9 +377,6 @@ void SettingsActivity::toggleCurrentSetting() {
         break;
       case SettingAction::SyncTimeNow:
         startActivityForResult(std::make_unique<SyncTimeNowActivity>(renderer, mappedInput), resultHandler);
-        break;
-      case SettingAction::SetTimeManual:
-        startActivityForResult(std::make_unique<SetTimeActivity>(renderer, mappedInput), resultHandler);
         break;
       case SettingAction::None:
         // Do nothing

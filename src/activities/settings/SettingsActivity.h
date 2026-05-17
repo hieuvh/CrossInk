@@ -25,7 +25,6 @@ enum class SettingAction {
   Language,
   DownloadFonts,
   SyncTimeNow,
-  SetTimeManual,
 };
 
 struct SettingInfo {

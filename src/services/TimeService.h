@@ -38,7 +38,7 @@ class TimeService {
   // boot-task path passes ignoreManualGuard=false; sync-now passes true.
   void onNtpSynced(int64_t epoch, bool ignoreManualGuard);
 
-  // Called from SetTimeActivity OK and from POST /api/time handler.
+  // Called from the POST /api/time web handler (browser-driven "Set to my browser's time").
   void onManualSet(int64_t epoch);
 
   TimeSource currentSource();
