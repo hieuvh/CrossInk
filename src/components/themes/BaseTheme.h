@@ -188,4 +188,11 @@ class BaseTheme {
   static constexpr int batteryPercentSpacing = 4;
   static void drawBatteryOutline(const GfxRenderer& renderer, int x, int y, int battWidth, int rectHeight);
   static void drawBatteryLightningBolt(const GfxRenderer& renderer, int boltX, int boltY);
+  // Draw a filled triangular arrow inside a `size x size` box anchored at (x, y).
+  // direction: 'L' / 'R' / 'U' / 'D'. Used by drawButtonHints to render ◀▶▲▼
+  // labels as actual icons instead of relying on Unicode glyphs in the font.
+  static void drawTriangleArrow(const GfxRenderer& renderer, int x, int y, int size, char direction);
+  // Returns 'L'/'R'/'U'/'D' if `label` is one of the four triangle UTF-8 strings;
+  // returns '\0' otherwise.
+  static char triangleDirectionForLabel(const char* label);
 };

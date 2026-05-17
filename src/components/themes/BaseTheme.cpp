@@ -40,6 +40,32 @@ void BaseTheme::drawBatteryOutline(const GfxRenderer& renderer, int x, int y, in
   renderer.drawLine(x + battWidth - 0, y + 4, x + battWidth - 0, y + rectHeight - 5);
 }
 
+void BaseTheme::drawTriangleArrow(const GfxRenderer& renderer, int x, int y, int size, char direction) {
+  if (size <= 0) return;
+  for (int i = 0; i < size; ++i) {
+    const int rowsFromEdge = std::min(i, size - 1 - i);
+    const int len = std::min(size, rowsFromEdge * 2 + 1);
+    if (len <= 0) continue;
+    switch (direction) {
+      case 'R': renderer.fillRect(x, y + i, len, 1, true); break;
+      case 'L': renderer.fillRect(x + size - len, y + i, len, 1, true); break;
+      case 'D': renderer.fillRect(x + i, y, 1, len, true); break;
+      case 'U': renderer.fillRect(x + i, y + size - len, 1, len, true); break;
+      default: return;
+    }
+  }
+}
+
+char BaseTheme::triangleDirectionForLabel(const char* label) {
+  if (label == nullptr) return '\0';
+  // UTF-8 byte sequences for ◀ ▶ ▲ ▼ (U+25C0 / U+25B6 / U+25B2 / U+25BC).
+  if (strcmp(label, "\xE2\x97\x80") == 0) return 'L';
+  if (strcmp(label, "\xE2\x96\xB6") == 0) return 'R';
+  if (strcmp(label, "\xE2\x96\xB2") == 0) return 'U';
+  if (strcmp(label, "\xE2\x96\xBC") == 0) return 'D';
+  return '\0';
+}
+
 void BaseTheme::drawBatteryLightningBolt(const GfxRenderer& renderer, int boltX, int boltY) {
   // Draw lightning bolt (white/inverted on black fill for visibility)
   renderer.drawLine(boltX + 4, boltY + 0, boltX + 5, boltY + 0, false);
@@ -160,9 +186,17 @@ void BaseTheme::drawButtonHints(GfxRenderer& renderer, const char* btn1, const c
       const int x = buttonPositions[invertText ? 3 - i : i];
       renderer.fillRect(x, pageHeight - buttonY, buttonWidth, buttonHeight, false);
       renderer.drawRect(x, pageHeight - buttonY, buttonWidth, buttonHeight);
-      const int textWidth = renderer.getTextWidth(UI_10_FONT_ID, labels[i]);
-      const int textX = x + (buttonWidth - 1 - textWidth) / 2;
-      renderer.drawText(UI_10_FONT_ID, textX, pageHeight - buttonY + textYOffset, labels[i]);
+      const char arrow = triangleDirectionForLabel(labels[i]);
+      if (arrow != '\0') {
+        constexpr int kArrowSize = 12;
+        const int iconX = x + (buttonWidth - kArrowSize) / 2;
+        const int iconY = pageHeight - buttonY + (buttonHeight - kArrowSize) / 2;
+        drawTriangleArrow(renderer, iconX, iconY, kArrowSize, arrow);
+      } else {
+        const int textWidth = renderer.getTextWidth(UI_10_FONT_ID, labels[i]);
+        const int textX = x + (buttonWidth - 1 - textWidth) / 2;
+        renderer.drawText(UI_10_FONT_ID, textX, pageHeight - buttonY + textYOffset, labels[i]);
+      }
     }
   }
 
