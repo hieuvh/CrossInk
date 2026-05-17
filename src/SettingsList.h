@@ -17,7 +17,7 @@
 // are appended after the built-in fonts. Otherwise only built-in fonts are listed.
 inline SettingInfo buildFontFamilySetting(const SdCardFontRegistry* registry) {
   // Built-in font labels (StrId)
-  std::vector<StrId> enumValues = {StrId::STR_LEXEND_DECA, StrId::STR_BITTER, StrId::STR_CHAREINK};
+  std::vector<StrId> enumValues = {StrId::STR_LEXEND_DECA, StrId::STR_BITTER};
   // Runtime string labels for SD card fonts
   std::vector<std::string> enumStringValues;
 
@@ -40,7 +40,6 @@ inline SettingInfo buildFontFamilySetting(const SdCardFontRegistry* registry) {
   if (sdFontCount > 0) {
     allStringValues.push_back(I18N.get(StrId::STR_LEXEND_DECA));
     allStringValues.push_back(I18N.get(StrId::STR_BITTER));
-    allStringValues.push_back(I18N.get(StrId::STR_CHAREINK));
     allStringValues.insert(allStringValues.end(), enumStringValues.begin(), enumStringValues.end());
   }
 
@@ -159,7 +158,6 @@ inline std::vector<SettingInfo> getSettingsList(const SdCardFontRegistry* regist
                           {
                               StrId::STR_LEXEND_DECA,
                               StrId::STR_BITTER,
-                              StrId::STR_CHAREINK,
                           },
                           "fontFamily", StrId::STR_CAT_READER),
         SettingInfo::Enum(StrId::STR_FONT_SIZE, &CrossPointSettings::fontSize,

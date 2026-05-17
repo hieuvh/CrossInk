@@ -57,41 +57,6 @@ EpdFont lexenddeca14BoldItalicFont(&lexenddeca_14_bolditalic);
 EpdFontFamily lexenddeca14FontFamily(&lexenddeca14RegularFont, &lexenddeca14BoldFont, &lexenddeca14ItalicFont,
                                      &lexenddeca14BoldItalicFont);
 #ifndef OMIT_TEENSY_FONT
-EpdFont charein8RegularFont(&charein_8_regular);
-EpdFont charein8BoldFont(&charein_8_bold);
-EpdFont charein8ItalicFont(&charein_8_italic);
-EpdFont charein8BoldItalicFont(&charein_8_bolditalic);
-EpdFontFamily charein8FontFamily(&charein8RegularFont, &charein8BoldFont, &charein8ItalicFont, &charein8BoldItalicFont);
-#endif
-#ifndef OMIT_TINY_FONT
-EpdFont charein10RegularFont(&charein_10_regular);
-EpdFont charein10BoldFont(&charein_10_bold);
-EpdFont charein10ItalicFont(&charein_10_italic);
-EpdFont charein10BoldItalicFont(&charein_10_bolditalic);
-EpdFontFamily charein10FontFamily(&charein10RegularFont, &charein10BoldFont, &charein10ItalicFont,
-                                  &charein10BoldItalicFont);
-#endif
-#ifndef OMIT_SMALL_FONT
-EpdFont charein12RegularFont(&charein_12_regular);
-EpdFont charein12BoldFont(&charein_12_bold);
-EpdFont charein12ItalicFont(&charein_12_italic);
-EpdFont charein12BoldItalicFont(&charein_12_bolditalic);
-EpdFontFamily charein12FontFamily(&charein12RegularFont, &charein12BoldFont, &charein12ItalicFont,
-                                  &charein12BoldItalicFont);
-#endif
-EpdFont charein14RegularFont(&charein_14_regular);
-EpdFont charein14BoldFont(&charein_14_bold);
-EpdFont charein14ItalicFont(&charein_14_italic);
-EpdFont charein14BoldItalicFont(&charein_14_bolditalic);
-EpdFontFamily charein14FontFamily(&charein14RegularFont, &charein14BoldFont, &charein14ItalicFont,
-                                  &charein14BoldItalicFont);
-EpdFont charein16RegularFont(&charein_16_regular);
-EpdFont charein16BoldFont(&charein_16_bold);
-EpdFont charein16ItalicFont(&charein_16_italic);
-EpdFont charein16BoldItalicFont(&charein_16_bolditalic);
-EpdFontFamily charein16FontFamily(&charein16RegularFont, &charein16BoldFont, &charein16ItalicFont,
-                                  &charein16BoldItalicFont);
-#ifndef OMIT_TEENSY_FONT
 EpdFont lexenddeca8RegularFont(&lexenddeca_8_regular);
 EpdFont lexenddeca8BoldFont(&lexenddeca_8_bold);
 EpdFont lexenddeca8ItalicFont(&lexenddeca_8_italic);
@@ -389,18 +354,6 @@ void setupDisplayAndFonts() {
   }
   fontCacheManager.setFontDecompressor(&fontDecompressor);
   renderer.setFontCacheManager(&fontCacheManager);
-
-#ifndef OMIT_TEENSY_FONT
-  renderer.insertFont(CHAREINK_8_FONT_ID, charein8FontFamily);
-#endif
-#ifndef OMIT_TINY_FONT
-  renderer.insertFont(CHAREINK_10_FONT_ID, charein10FontFamily);
-#endif
-#ifndef OMIT_SMALL_FONT
-  renderer.insertFont(CHAREINK_12_FONT_ID, charein12FontFamily);
-#endif
-  renderer.insertFont(CHAREINK_14_FONT_ID, charein14FontFamily);
-  renderer.insertFont(CHAREINK_16_FONT_ID, charein16FontFamily);
 
 #ifndef OMIT_TEENSY_FONT
   renderer.insertFont(LEXENDDECA_8_FONT_ID, lexenddeca8FontFamily);

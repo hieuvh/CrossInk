@@ -47,33 +47,6 @@
 #include BUILTIN_READING_FONT_HEADER(bitter_16_regular)
 
 #ifndef OMIT_TEENSY_FONT
-#include BUILTIN_READING_FONT_HEADER(charein_8_bold)
-#include BUILTIN_READING_FONT_HEADER(charein_8_bolditalic)
-#include BUILTIN_READING_FONT_HEADER(charein_8_italic)
-#include BUILTIN_READING_FONT_HEADER(charein_8_regular)
-#endif
-#ifndef OMIT_TINY_FONT
-#include BUILTIN_READING_FONT_HEADER(charein_10_bold)
-#include BUILTIN_READING_FONT_HEADER(charein_10_bolditalic)
-#include BUILTIN_READING_FONT_HEADER(charein_10_italic)
-#include BUILTIN_READING_FONT_HEADER(charein_10_regular)
-#endif
-#ifndef OMIT_SMALL_FONT
-#include BUILTIN_READING_FONT_HEADER(charein_12_bold)
-#include BUILTIN_READING_FONT_HEADER(charein_12_bolditalic)
-#include BUILTIN_READING_FONT_HEADER(charein_12_italic)
-#include BUILTIN_READING_FONT_HEADER(charein_12_regular)
-#endif
-#include BUILTIN_READING_FONT_HEADER(charein_14_bold)
-#include BUILTIN_READING_FONT_HEADER(charein_14_bolditalic)
-#include BUILTIN_READING_FONT_HEADER(charein_14_italic)
-#include BUILTIN_READING_FONT_HEADER(charein_14_regular)
-#include BUILTIN_READING_FONT_HEADER(charein_16_bold)
-#include BUILTIN_READING_FONT_HEADER(charein_16_bolditalic)
-#include BUILTIN_READING_FONT_HEADER(charein_16_italic)
-#include BUILTIN_READING_FONT_HEADER(charein_16_regular)
-
-#ifndef OMIT_TEENSY_FONT
 #include BUILTIN_READING_FONT_HEADER(lexenddeca_8_bold)
 #include BUILTIN_READING_FONT_HEADER(lexenddeca_8_bolditalic)
 #include BUILTIN_READING_FONT_HEADER(lexenddeca_8_italic)
