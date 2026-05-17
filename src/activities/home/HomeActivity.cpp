@@ -1227,6 +1227,13 @@ void HomeActivity::render(RenderLock&&) {
       // is centered (used for cover buffer coordinate lookups inside the theme).
       LyraCarouselTheme::setPreRenderIndex(centerIdx);
 
+      // Re-draw the header on top of the cached frame. The cached frame baked
+      // in the clock text and battery icon at build time, so without this the
+      // live-clock minute trigger would memcpy stale clock pixels every minute.
+      // drawHeader clears its own rect, so we overwrite the cached header
+      // cleanly. Cheap (≈60px tall) compared to a full re-render.
+      GUI.drawHeader(renderer, Rect{0, metrics.topPadding, pageWidth, metrics.homeTopPadding}, nullptr);
+
       GUI.drawCarouselBorder(renderer, Rect{0, metrics.homeTopPadding, pageWidth, metrics.homeCoverTileHeight},
                              recentBooks, centerIdx, inCarouselRow);
       if (!inCarouselRow) {
