@@ -77,7 +77,10 @@
 
 // UI fonts - no emoji or PHM variants.
 #include <builtinFonts/quicksand_10_bold.h>
+#include <builtinFonts/quicksand_10_medium.h>
 #include <builtinFonts/quicksand_10_regular.h>
 #include <builtinFonts/quicksand_12_bold.h>
+#include <builtinFonts/quicksand_12_medium.h>
 #include <builtinFonts/quicksand_12_regular.h>
+#include <builtinFonts/quicksand_8_medium.h>
 #include <builtinFonts/quicksand_8_regular.h>
