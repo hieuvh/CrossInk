@@ -116,9 +116,15 @@ void LyraTheme::fillBatteryIcon(const GfxRenderer& renderer, Rect rect, uint16_t
 void LyraTheme::drawHeader(const GfxRenderer& renderer, Rect rect, const char* title, const char* subtitle) const {
   renderer.fillRect(rect.x, rect.y, rect.width, rect.height, false);
 
-  // Header clock now travels with drawBatteryRight (drawn next to the battery
-  // percentage on the right side), so it appears on every screen that shows
-  // the battery widget, not just Home.
+  // Header clock on the left, drawn on every screen that uses drawHeader
+  // (not just Home). Gated on SETTINGS.showHeaderClock.
+  if (SETTINGS.showHeaderClock) {
+    char clockBuf[16];
+    if (TimeService::instance().formatLocal(clockBuf, sizeof(clockBuf))) {
+      renderer.drawText(SMALL_FONT_ID, rect.x + LyraMetrics::values.contentSidePadding,
+                        rect.y + 5, clockBuf, true);
+    }
+  }
 
   const bool showBatteryPercentage =
       SETTINGS.hideBatteryPercentage != CrossPointSettings::HIDE_BATTERY_PERCENTAGE::HIDE_ALWAYS;
