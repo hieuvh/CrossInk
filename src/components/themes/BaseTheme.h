@@ -1,5 +1,7 @@
 #pragma once
 
+#include <EpdFontFamily.h>
+
 #include <cstddef>
 #include <cstdint>
 #include <functional>
@@ -206,4 +208,12 @@ class BaseTheme {
     size_t textLen = 0;      // length of the text portion (after stripping triangle + adjacent space).
   };
   static TriangleAffix parseTriangleAffix(const char* label);
+
+  // Render a list-row title at (x, y), substituting a bitmap triangle icon
+  // for a leading/trailing ◀▶▲▼ glyph in `label`. The text portion is
+  // truncated to fit within (maxWidth - icon - gap). Returns the total
+  // width drawn so callers can size dimmed-row dither overlays.
+  static int drawListRowTitle(const GfxRenderer& renderer, int x, int y, int fontId,
+                              const std::string& label, int maxWidth, bool foreground,
+                              EpdFontFamily::Style family = EpdFontFamily::REGULAR);
 };

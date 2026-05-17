@@ -337,13 +337,12 @@ void LyraTheme::drawListWithMetrics(const GfxRenderer& renderer, Rect rect, int 
       rowTextWidth -= valueWidth;
     }
 
-    auto itemName = rowTitle(i);
-    auto item = renderer.truncatedText(UI_10_FONT_ID, itemName.c_str(), rowTextWidth);
-    renderer.drawText(UI_10_FONT_ID, textX, itemY + 7, item.c_str(), foreground);
+    const std::string itemName = rowTitle(i);
+    const int titleWidth =
+        drawListRowTitle(renderer, textX, itemY + 7, UI_10_FONT_ID, itemName, rowTextWidth, foreground);
 
     // Apply checkerboard dither to create gray text effect for dimmed items
     if (rowDimmed && rowDimmed(i) && !selectedRow) {
-      const int titleWidth = renderer.getTextWidth(UI_10_FONT_ID, item.c_str());
       const int lineH = renderer.getLineHeight(UI_10_FONT_ID);
       for (int py = itemY + 7; py < itemY + 7 + lineH; py++)
         for (int px = textX; px < textX + titleWidth; px++)

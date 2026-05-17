@@ -79,6 +79,45 @@ char BaseTheme::triangleDirectionForLabel(const char* label) {
   return '\0';
 }
 
+int BaseTheme::drawListRowTitle(const GfxRenderer& renderer, int x, int y, int fontId,
+                                const std::string& label, int maxWidth, bool foreground,
+                                EpdFontFamily::Style family) {
+  const TriangleAffix tri = parseTriangleAffix(label.c_str());
+  if (tri.direction == '\0') {
+    // Plain text — same as before.
+    const std::string truncated = renderer.truncatedText(fontId, label.c_str(), maxWidth, family);
+    renderer.drawText(fontId, x, y, truncated.c_str(), foreground, family);
+    return renderer.getTextWidth(fontId, truncated.c_str(), family);
+  }
+
+  constexpr int kArrowSize = 10;
+  constexpr int kIconGap = 4;
+  const int lineH = renderer.getLineHeight(fontId);
+  const int iconY = y + std::max(0, (lineH - kArrowSize) / 2);
+
+  if (tri.textLen == 0) {
+    // Pure triangle — just the icon at the title start position.
+    drawTriangleArrow(renderer, x, iconY, kArrowSize, tri.direction);
+    return kArrowSize;
+  }
+
+  // Triangle + text — keep the natural reading order (icon then text for leading,
+  // text then icon for trailing) and truncate the text portion to fit.
+  const std::string fullText(tri.textStart, tri.textLen);
+  const int availTextWidth = std::max(0, maxWidth - kArrowSize - kIconGap);
+  const std::string text = renderer.truncatedText(fontId, fullText.c_str(), availTextWidth, family);
+  const int textWidth = renderer.getTextWidth(fontId, text.c_str(), family);
+
+  if (tri.isLeading) {
+    drawTriangleArrow(renderer, x, iconY, kArrowSize, tri.direction);
+    renderer.drawText(fontId, x + kArrowSize + kIconGap, y, text.c_str(), foreground, family);
+  } else {
+    renderer.drawText(fontId, x, y, text.c_str(), foreground, family);
+    drawTriangleArrow(renderer, x + textWidth + kIconGap, iconY, kArrowSize, tri.direction);
+  }
+  return kArrowSize + kIconGap + textWidth;
+}
+
 BaseTheme::TriangleAffix BaseTheme::parseTriangleAffix(const char* label) {
   TriangleAffix r;
   r.textStart = label;
@@ -412,21 +451,18 @@ void BaseTheme::drawList(const GfxRenderer& renderer, Rect rect, int itemCount, 
       }
     }
 
-    auto itemName = rowTitle(i);
-    auto font = UI_10_FONT_ID;
-    auto item = renderer.truncatedText(font, itemName.c_str(), rowTextWidth);
+    const std::string itemName = rowTitle(i);
+    const auto font = UI_10_FONT_ID;
+    const int tx = rect.x + BaseMetrics::values.contentSidePadding;
     if (isHeader && isHeader(i)) {
-      renderer.drawText(font, rect.x + BaseMetrics::values.contentSidePadding, itemY, item.c_str(), true,
-                        EpdFontFamily::BOLD);
+      drawListRowTitle(renderer, tx, itemY, font, itemName, rowTextWidth, true, EpdFontFamily::BOLD);
       continue;
     }
-    renderer.drawText(font, rect.x + BaseMetrics::values.contentSidePadding, itemY, item.c_str(), i != selectedIndex);
+    const int titleWidth = drawListRowTitle(renderer, tx, itemY, font, itemName, rowTextWidth, i != selectedIndex);
 
     // Apply checkerboard dither to create gray text effect for dimmed items
     if (rowDimmed && rowDimmed(i) && i != selectedIndex) {
-      const int titleWidth = renderer.getTextWidth(font, item.c_str());
       const int lineH = renderer.getLineHeight(font);
-      const int tx = rect.x + BaseMetrics::values.contentSidePadding;
       for (int py = itemY; py < itemY + lineH; py++)
         for (int px = tx; px < tx + titleWidth; px++)
           if ((px + py) % 2 == 0) renderer.drawPixel(px, py, false);
