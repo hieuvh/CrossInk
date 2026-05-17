@@ -119,19 +119,15 @@ EpdFont bitter16ItalicFont(&bitter_16_italic);
 EpdFont bitter16BoldItalicFont(&bitter_16_bolditalic);
 EpdFontFamily bitter16FontFamily(&bitter16RegularFont, &bitter16BoldFont, &bitter16ItalicFont, &bitter16BoldItalicFont);
 
-// Quicksand at weight 400 looks thin on e-ink; use Medium (500) for the
-// "regular" UI slot so headers, settings rows, and the clock all sit a bit
-// heavier. Bold (700) stays as-is. quicksand_*_regular headers are still
-// generated so callers that explicitly want the lighter weight can swap.
-EpdFont smallFont(&quicksand_8_medium);
+EpdFont smallFont(&inter_8_regular);
 EpdFontFamily smallFontFamily(&smallFont);
 
-EpdFont ui10RegularFont(&quicksand_10_medium);
-EpdFont ui10BoldFont(&quicksand_10_bold);
+EpdFont ui10RegularFont(&inter_10_regular);
+EpdFont ui10BoldFont(&inter_10_bold);
 EpdFontFamily ui10FontFamily(&ui10RegularFont, &ui10BoldFont);
 
-EpdFont ui12RegularFont(&quicksand_12_medium);
-EpdFont ui12BoldFont(&quicksand_12_bold);
+EpdFont ui12RegularFont(&inter_12_regular);
+EpdFont ui12BoldFont(&inter_12_bold);
 EpdFontFamily ui12FontFamily(&ui12RegularFont, &ui12BoldFont);
 
 // measurement of power button press duration calibration value
