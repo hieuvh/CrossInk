@@ -22,6 +22,7 @@
 ### Removed
 - Removed Bionic Reading and Guide Dots features from the EPUB reader.
 - Removed all UI languages except English and Vietnamese.
+- Removed the **XTC Status Bar** setting (Settings → Display → Customize Status Bar) and the matching top/bottom overlay on XTC pages. The XTC reader was the only consumer, the overlay was off by default, and the rendering code had no other use — XTC pages now always render full-bleed.
 
 ## [v1.2.10]
 

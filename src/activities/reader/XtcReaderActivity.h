@@ -22,16 +22,7 @@ class XtcReaderActivity final : public Activity {
   bool longPowerPageTurnHandled = false;
   bool frontButtonLongPressHandled = false;
 
-  enum class StatusBarOverlayPosition { Bottom, Top };
-  struct StatusBarInfo {
-    int currentPage;
-    int pageCount;
-    std::string title;
-  };
-
   void renderPage();
-  void renderStatusBarOverlay(StatusBarOverlayPosition position) const;
-  StatusBarInfo getStatusBarInfo() const;
   void saveProgress() const;
   void loadProgress();
 
