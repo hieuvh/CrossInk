@@ -11,6 +11,9 @@
 - Added **Quicksand** as a third built-in reading font (sizes 8/10/12/14/16). Regular uses the Medium weight for stronger strokes on e-ink; italic body text falls back to the upright weight since Quicksand ships no italic master.
 - Switched the UI font from Inter to **Quicksand SemiBold** (Regular slot) + **Quicksand Bold** (Bold slot) so labels and headers carry more weight on the e-ink panel.
 
+### Changed
+- Reader page turns now skip the grayscale anti-aliasing "upgrade" pass when another page turn is already queued — rapid skimming stays snappy, and the AA refresh only runs once you stop on a page.
+
 ### Fixed
 - Fixed intermittent crash when opening a book from the Lyra Carousel home screen (race condition between the main task freeing carousel frame buffers and the render task reading them).
 - Fixed Lyra Carousel theme showing a solid black square instead of an icon for selected items in lists that use subtitle rows (e.g. Recent Books), for icons that only have 24px variants.

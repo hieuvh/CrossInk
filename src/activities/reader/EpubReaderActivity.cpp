@@ -1659,6 +1659,15 @@ void EpubReaderActivity::renderContents(std::unique_ptr<Page> page, const int or
 
   // grayscale rendering
   if (canApplyGrayscale) {
+    // If a new render (e.g. another page turn) is already queued, the BW page
+    // is already on-screen and the grayscale "upgrade" would just waste 1-2s
+    // before the next page starts. Skip the whole grayscale phase.
+    if (activityManager.hasPendingRender()) {
+      renderer.restoreBwBuffer();
+      LOG_DBG("ERS", "Skip grayscale: page turn queued before AA started");
+      return;
+    }
+
     renderer.clearScreen(0x00);
     renderer.setRenderMode(GfxRenderer::GRAYSCALE_LSB);
     if (needsTextGrayscale) {
@@ -1668,6 +1677,14 @@ void EpubReaderActivity::renderContents(std::unique_ptr<Page> page, const int or
     }
     renderer.copyGrayscaleLsbBuffers();
     const auto tGrayLsb = millis();
+
+    // Same check between passes — the MSB render is ~half the AA budget.
+    if (activityManager.hasPendingRender()) {
+      renderer.setRenderMode(GfxRenderer::BW);
+      renderer.restoreBwBuffer();
+      LOG_DBG("ERS", "Skip grayscale MSB: page turn queued after LSB pass (lsb=%lums)", tGrayLsb - tBwStore);
+      return;
+    }
 
     // MSB pass: build on the LSB result without clearing (dark-gray pixels already WHITE).
     renderer.setRenderMode(GfxRenderer::GRAYSCALE_MSB);
