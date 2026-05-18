@@ -685,8 +685,11 @@ void loop() {
       powerManager.setPowerSaving(true);  // Lower CPU frequency after extended inactivity
       delay(50);
     } else {
-      // Short delay to prevent tight loop while still being responsive
-      delay(10);
+      // Short delay to prevent tight loop while still being responsive.
+      // 5ms = 200Hz button polling cadence — halves worst-case press-to-react
+      // latency vs the previous 10ms without measurably affecting power draw
+      // while active.
+      delay(5);
     }
   }
 }

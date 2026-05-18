@@ -22,7 +22,6 @@ enum class SettingAction {
   ClearCache,
   // CheckForUpdates,
   // SdFirmwareUpdate,
-  Language,
   DownloadFonts,
   SyncTimeNow,
 };

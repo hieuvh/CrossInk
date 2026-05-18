@@ -13,7 +13,6 @@
 #include "FontDownloadActivity.h"
 #include "FontSelectionActivity.h"
 #include "KOReaderSettingsActivity.h"
-#include "LanguageSelectActivity.h"
 #include "MappedInputManager.h"
 #include "OpdsServerListActivity.h"
 #include "OtaUpdateActivity.h"
@@ -122,7 +121,6 @@ void SettingsActivity::rebuildSettingsLists() {
   readerSettings.push_back(SettingInfo::Action(StrId::STR_CUSTOMISE_STATUS_BAR, SettingAction::CustomiseStatusBar));
 
   // Build System tab with section headers
-  systemSettings.push_back(SettingInfo::Action(StrId::STR_LANGUAGE, SettingAction::Language));
   systemSettings.push_back(SettingInfo::SectionHeader(StrId::STR_SECT_CONNECTIVITY));
   systemSettings.push_back(SettingInfo::Action(StrId::STR_WIFI_NETWORKS, SettingAction::Network));
   systemSettings.push_back(SettingInfo::Action(StrId::STR_KOREADER_SYNC, SettingAction::KOReaderSync));
@@ -370,9 +368,6 @@ void SettingsActivity::toggleCurrentSetting() {
                                  SETTINGS.saveToFile();
                                  rebuildSettingsLists();
                                });
-        break;
-      case SettingAction::Language:
-        startActivityForResult(std::make_unique<LanguageSelectActivity>(renderer, mappedInput), resultHandler);
         break;
       case SettingAction::SyncTimeNow:
         startActivityForResult(std::make_unique<SyncTimeNowActivity>(renderer, mappedInput), resultHandler);
