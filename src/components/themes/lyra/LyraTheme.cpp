@@ -315,15 +315,17 @@ void LyraTheme::drawListWithMetrics(const GfxRenderer& renderer, Rect rect, int 
       // No uppercase transform — byte-wise std::toupper mangles UTF-8 multi-byte
       // sequences (the byte 0xE1 in Vietnamese "ể" 0xE1 0xBB 0x83 becomes 0xC1,
       // producing invalid UTF-8 that the renderer decodes as wrong glyphs).
-      // ASCII-only uppercasing left Vietnamese chars intact but the first ASCII
-      // char of each header still rendered as a blank/replacement glyph,
-      // probably because the BOLD font lookup interacts oddly with the mixed
-      // upper+UTF-8 string. Keep the label in its source case — Vietnamese
-      // section labels read naturally as title-case anyway.
+      // Keep the label in its source case — Vietnamese section labels read
+      // naturally as title-case anyway.
       const std::string label = rowTitle(i);
       const auto truncated = renderer.truncatedText(sectionHeaderFontId, label.c_str(),
                                                     contentWidth - metrics.contentSidePadding * 2, EpdFontFamily::BOLD);
-      renderer.drawText(sectionHeaderFontId, rect.x + metrics.contentSidePadding, itemY, truncated.c_str(), true,
+      // Vertically centre the text inside the row. drawText expects the baseline
+      // y, so we need to offset down by enough that the glyph (which sits above
+      // its baseline) lands inside the row. Using bare itemY (top of row) clips
+      // the glyph above the visible area — that was the "first char blank" bug.
+      const int headerTextY = itemY + (currentRowHeight - sectionHeaderLineHeight) / 2;
+      renderer.drawText(sectionHeaderFontId, rect.x + metrics.contentSidePadding, headerTextY, truncated.c_str(), true,
                         EpdFontFamily::BOLD);
       renderer.drawLine(rect.x, itemY + currentRowHeight - 1, rect.x + contentWidth, itemY + currentRowHeight - 1,
                         true);
