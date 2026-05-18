@@ -318,15 +318,15 @@ void LyraTheme::drawListWithMetrics(const GfxRenderer& renderer, Rect rect, int 
       // Keep the label in its source case — Vietnamese section labels read
       // naturally as title-case anyway.
       const std::string label = rowTitle(i);
+      // Render in REGULAR style — BOLD glyph lookup seems to cause the first
+      // codepoint to fall through to the synthetic replacement glyph (rendered
+      // as `?`) for Vietnamese-containing strings. Falling back to REGULAR
+      // until that lookup path is understood. Section headers are still
+      // visually distinct via the divider line below.
       const auto truncated = renderer.truncatedText(sectionHeaderFontId, label.c_str(),
-                                                    contentWidth - metrics.contentSidePadding * 2, EpdFontFamily::BOLD);
-      // Vertically centre the text inside the row. drawText expects the baseline
-      // y, so we need to offset down by enough that the glyph (which sits above
-      // its baseline) lands inside the row. Using bare itemY (top of row) clips
-      // the glyph above the visible area — that was the "first char blank" bug.
+                                                    contentWidth - metrics.contentSidePadding * 2);
       const int headerTextY = itemY + (currentRowHeight - sectionHeaderLineHeight) / 2;
-      renderer.drawText(sectionHeaderFontId, rect.x + metrics.contentSidePadding, headerTextY, truncated.c_str(), true,
-                        EpdFontFamily::BOLD);
+      renderer.drawText(sectionHeaderFontId, rect.x + metrics.contentSidePadding, headerTextY, truncated.c_str(), true);
       renderer.drawLine(rect.x, itemY + currentRowHeight - 1, rect.x + contentWidth, itemY + currentRowHeight - 1,
                         true);
       continue;
