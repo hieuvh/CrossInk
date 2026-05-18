@@ -311,21 +311,19 @@ void LyraTheme::drawListWithMetrics(const GfxRenderer& renderer, Rect rect, int 
     const bool foreground = !(invertSelectedRows && selectedRow);
 
     if (isHeaderRow(i)) {
-      // Section header: bold uppercase label + divider line below.
-      // toupper is applied byte-by-byte, but we MUST skip UTF-8 continuation
-      // bytes (>= 0x80) or we'll mangle multi-byte sequences — e.g. the byte
-      // 0xE1 in Vietnamese "ể" (0xE1 0xBB 0x83) would become 0xC1, producing
-      // invalid UTF-8 that the renderer decodes as wrong glyphs (Vietnamese
-      // section headers like "Giao diện" / "Phông chữ" / "Bố cục" then had
-      // their first ASCII letter come out blank or substituted).
-      std::string label = rowTitle(i);
-      std::transform(label.begin(), label.end(), label.begin(), [](unsigned char c) {
-        return c < 0x80 ? static_cast<char>(std::toupper(c)) : static_cast<char>(c);
-      });
-      auto truncated = renderer.truncatedText(sectionHeaderFontId, label.c_str(),
-                                              contentWidth - metrics.contentSidePadding * 2, EpdFontFamily::BOLD);
-      const int headerTextY = itemY;
-      renderer.drawText(sectionHeaderFontId, rect.x + metrics.contentSidePadding, headerTextY, truncated.c_str(), true,
+      // Section header: bold label + divider line below.
+      // No uppercase transform — byte-wise std::toupper mangles UTF-8 multi-byte
+      // sequences (the byte 0xE1 in Vietnamese "ể" 0xE1 0xBB 0x83 becomes 0xC1,
+      // producing invalid UTF-8 that the renderer decodes as wrong glyphs).
+      // ASCII-only uppercasing left Vietnamese chars intact but the first ASCII
+      // char of each header still rendered as a blank/replacement glyph,
+      // probably because the BOLD font lookup interacts oddly with the mixed
+      // upper+UTF-8 string. Keep the label in its source case — Vietnamese
+      // section labels read naturally as title-case anyway.
+      const std::string label = rowTitle(i);
+      const auto truncated = renderer.truncatedText(sectionHeaderFontId, label.c_str(),
+                                                    contentWidth - metrics.contentSidePadding * 2, EpdFontFamily::BOLD);
+      renderer.drawText(sectionHeaderFontId, rect.x + metrics.contentSidePadding, itemY, truncated.c_str(), true,
                         EpdFontFamily::BOLD);
       renderer.drawLine(rect.x, itemY + currentRowHeight - 1, rect.x + contentWidth, itemY + currentRowHeight - 1,
                         true);
