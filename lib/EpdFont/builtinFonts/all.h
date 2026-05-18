@@ -75,9 +75,41 @@
 
 #undef BUILTIN_READING_FONT_HEADER
 
-// UI fonts - no emoji or PHM variants.
-#include <builtinFonts/inter_10_bold.h>
-#include <builtinFonts/inter_10_regular.h>
-#include <builtinFonts/inter_12_bold.h>
-#include <builtinFonts/inter_12_regular.h>
-#include <builtinFonts/inter_8_regular.h>
+// Quicksand reading font - single variant (no emoji/PHM/symbol fallback faces),
+// so direct includes work regardless of OMIT_EMOJI_FONTS / OMIT_PHM.
+// Italic/BoldItalic slots are generated from Quicksand-Medium / Quicksand-Bold
+// because Quicksand ships no italic master.
+#ifndef OMIT_TEENSY_FONT
+#include <builtinFonts/quicksand_8_bold.h>
+#include <builtinFonts/quicksand_8_bolditalic.h>
+#include <builtinFonts/quicksand_8_italic.h>
+#include <builtinFonts/quicksand_8_regular.h>
+#endif
+#ifndef OMIT_TINY_FONT
+#include <builtinFonts/quicksand_10_bold.h>
+#include <builtinFonts/quicksand_10_bolditalic.h>
+#include <builtinFonts/quicksand_10_italic.h>
+#include <builtinFonts/quicksand_10_regular.h>
+#endif
+#ifndef OMIT_SMALL_FONT
+#include <builtinFonts/quicksand_12_bold.h>
+#include <builtinFonts/quicksand_12_bolditalic.h>
+#include <builtinFonts/quicksand_12_italic.h>
+#include <builtinFonts/quicksand_12_regular.h>
+#endif
+#include <builtinFonts/quicksand_14_bold.h>
+#include <builtinFonts/quicksand_14_bolditalic.h>
+#include <builtinFonts/quicksand_14_italic.h>
+#include <builtinFonts/quicksand_14_regular.h>
+#include <builtinFonts/quicksand_16_bold.h>
+#include <builtinFonts/quicksand_16_bolditalic.h>
+#include <builtinFonts/quicksand_16_italic.h>
+#include <builtinFonts/quicksand_16_regular.h>
+
+// UI fonts - Quicksand SemiBold (regular slot) + Quicksand Bold (bold slot).
+// No emoji or PHM variants; UI text is short labels only.
+#include <builtinFonts/quicksand_sb_10_bold.h>
+#include <builtinFonts/quicksand_sb_10_regular.h>
+#include <builtinFonts/quicksand_sb_12_bold.h>
+#include <builtinFonts/quicksand_sb_12_regular.h>
+#include <builtinFonts/quicksand_sb_8_regular.h>

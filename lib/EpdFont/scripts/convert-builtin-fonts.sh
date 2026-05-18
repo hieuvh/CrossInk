@@ -74,28 +74,6 @@ PHM_INTERVALS=(
   --additional-intervals 0x91CA,0x91CA
 )
 
-CHAREINK_FALLBACK_RANGES=(
-  0x03BB,0x03BB
-  0x0410,0x0414
-  0x0418,0x0418
-  0x041B,0x041B
-  0x041D,0x0423
-  0x0425,0x0425
-  0x0427,0x0427
-  0x042B,0x042C
-  0x042E,0x0432
-  0x0434,0x0435
-  0x0437,0x0437
-  0x043A,0x043A
-  0x043D,0x043E
-  0x0440,0x0440
-  0x0442,0x0442
-  0x0446,0x0446
-  0x044C,0x044C
-  0x044E,0x044E
-  0x2113,0x2113
-)
-
 EMOJI_FALLBACK_RANGES=(
   0x1F600,0x1F637
   0x1F641,0x1F644
@@ -127,7 +105,7 @@ PHM_FALLBACK_RANGES=(
   0x91CA,0x91CA
 )
 
-READING_FONT_SIZES=(8 10 12 14 16 18 20)
+READING_FONT_SIZES=(8 10 12 14 16)
 READING_FONT_STYLES=("Regular" "Bold" "Italic" "BoldItalic")
 READING_FONT_RENDER_ARGS=(--2bit --compress --pnum --darken-aa)
 
@@ -146,7 +124,6 @@ generate_family() {
   local output_dir="$4"
   local include_emoji="$5"
   local include_phm="$6"
-  local use_chareink_common_fallback="$7"
 
   for size in ${READING_FONT_SIZES[@]}; do
     for style in ${READING_FONT_STYLES[@]}; do
@@ -161,10 +138,6 @@ generate_family() {
 
       if [[ "$include_emoji" == "yes" ]]; then
         interval_args+=("${EMOJI_INTERVALS[@]}")
-        if [[ "$use_chareink_common_fallback" == "yes" ]]; then
-          font_stack+=("../builtinFonts/source/ChareInk7/ChareInk7-${style}.ttf")
-          include_args+=($(font_include_args $(( ${#font_stack[@]} - 1 )) "${CHAREINK_FALLBACK_RANGES[@]}"))
-        fi
         font_stack+=("$EMOJI_FONT")
         include_args+=($(font_include_args $(( ${#font_stack[@]} - 1 )) "${EMOJI_FALLBACK_RANGES[@]}"))
         font_stack+=("$SYMBOLS_FONT")
@@ -191,9 +164,8 @@ generate_reading_variant() {
 
   mkdir -p "$output_dir"
   echo "Generating ${label} font variants..."
-  generate_family lexenddeca LexendDeca LexendDeca "$output_dir" "$include_emoji" "$include_phm" yes
-  generate_family bitter Bitter Bitter "$output_dir" "$include_emoji" "$include_phm" yes
-  generate_family charein ChareInk7 ChareInk7 "$output_dir" "$include_emoji" "$include_phm" no
+  generate_family lexenddeca LexendDeca LexendDeca "$output_dir" "$include_emoji" "$include_phm"
+  generate_family bitter Bitter Bitter "$output_dir" "$include_emoji" "$include_phm"
   echo ""
   echo "${label} variants complete."
   echo ""
@@ -207,24 +179,40 @@ generate_reading_variant ../builtinFonts yes yes "default"
 generate_reading_variant ../builtinFonts/noemoji no no "no-emoji"
 generate_reading_variant ../builtinFonts/nophm yes no "no-PHM"
 
-# UI Font - Inter
+# UI Font - Quicksand SemiBold (regular slot) + Quicksand Bold (bold slot).
+# 1-bit headers for sharp pixel-perfect UI text on the e-ink panel.
 
 UI_FONT_SIZES=(10 12)
-UI_FONT_STYLES=("Regular" "Bold")
 
 for size in ${UI_FONT_SIZES[@]}; do
-  for style in ${UI_FONT_STYLES[@]}; do
-    font_name="inter_${size}_$(echo $style | tr '[:upper:]' '[:lower:]')"
-    font_path="../builtinFonts/source/Inter/Inter-${style}.ttf"
-    output_path="../builtinFonts/${font_name}.h"
-    python fontconvert.py $font_name $size $font_path > $output_path
-    echo "Generated $output_path"
-  done
+  python fontconvert.py "quicksand_sb_${size}_regular" $size \
+    ../builtinFonts/source/Quicksand/Quicksand-SemiBold.ttf > "../builtinFonts/quicksand_sb_${size}_regular.h"
+  python fontconvert.py "quicksand_sb_${size}_bold" $size \
+    ../builtinFonts/source/Quicksand/Quicksand-Bold.ttf > "../builtinFonts/quicksand_sb_${size}_bold.h"
+  echo "Generated ../builtinFonts/quicksand_sb_${size}_{regular,bold}.h"
 done
 
-# Small UI Font - Inter
+# Small UI Font - Quicksand SemiBold at 8px
 
-python fontconvert.py inter_8_regular 8 ../builtinFonts/source/Inter/Inter-Regular.ttf > ../builtinFonts/inter_8_regular.h
+python fontconvert.py quicksand_sb_8_regular 8 \
+  ../builtinFonts/source/Quicksand/Quicksand-SemiBold.ttf > ../builtinFonts/quicksand_sb_8_regular.h
+echo "Generated ../builtinFonts/quicksand_sb_8_regular.h"
+
+# Reading Font - Quicksand (sizes 8/10/12/14/16, no emoji/symbol/PHM fallback).
+# Quicksand ships no italic master; the italic/bolditalic slots reuse the
+# upright Medium/Bold so italic body text degrades to upright instead of
+# missing glyphs.
+QUICKSAND_SIZES=(8 10 12 14 16)
+for size in ${QUICKSAND_SIZES[@]}; do
+  for spec in "regular:Medium" "bold:Bold" "italic:Medium" "bolditalic:Bold"; do
+    slot="${spec%%:*}"
+    src="${spec##*:}"
+    python fontconvert.py "quicksand_${size}_${slot}" "$size" \
+      "../builtinFonts/source/Quicksand/Quicksand-${src}.ttf" \
+      --2bit --compress --pnum --darken-aa > "../builtinFonts/quicksand_${size}_${slot}.h"
+    echo "Generated ../builtinFonts/quicksand_${size}_${slot}.h"
+  done
+done
 
 echo ""
 echo "Running compression verification..."

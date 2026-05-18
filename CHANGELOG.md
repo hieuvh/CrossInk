@@ -8,6 +8,8 @@
 - Added DS3231 hardware RTC support on X3 (read and write).
 - Added manual time entry in Settings → System (on-device editor and via the web Settings page's "Set to my browser's time" button).
 - Added a **Button Hints** toggle in Settings → Display to show or hide the button label bar at the bottom of the screen.
+- Added **Quicksand** as a third built-in reading font (sizes 8/10/12/14/16). Regular uses the Medium weight for stronger strokes on e-ink; italic body text falls back to the upright weight since Quicksand ships no italic master.
+- Switched the UI font from Inter to **Quicksand SemiBold** (Regular slot) + **Quicksand Bold** (Bold slot) so labels and headers carry more weight on the e-ink panel.
 
 ### Fixed
 - Fixed intermittent crash when opening a book from the Lyra Carousel home screen (race condition between the main task freeing carousel frame buffers and the render task reading them).

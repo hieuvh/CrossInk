@@ -364,6 +364,18 @@ float CrossPointSettings::getReaderLineCompression() const {
         case WIDE:
           return 1.3f;
       }
+    case QUICKSAND:
+      // Quicksand has a tall x-height and rounded letterforms — the same
+      // spacing curve as LexendDeca reads cleanly on e-ink without crowding.
+      switch (lineSpacing) {
+        case TIGHT:
+          return 0.90f;
+        case NORMAL:
+        default:
+          return 1.0f;
+        case WIDE:
+          return 1.2f;
+      }
   }
 }
 
@@ -500,6 +512,26 @@ int CrossPointSettings::getReaderFontId() const {
           return BITTER_14_FONT_ID;
         case LARGE:
           return BITTER_16_FONT_ID;
+      }
+    case QUICKSAND:
+      switch (effectiveSize) {
+#ifndef OMIT_TEENSY_FONT
+        case TEENSY:
+          return QUICKSAND_8_FONT_ID;
+#endif
+#ifndef OMIT_TINY_FONT
+        case TINY:
+          return QUICKSAND_10_FONT_ID;
+#endif
+#ifndef OMIT_SMALL_FONT
+        case SMALL:
+          return QUICKSAND_12_FONT_ID;
+#endif
+        case MEDIUM:
+        default:
+          return QUICKSAND_14_FONT_ID;
+        case LARGE:
+          return QUICKSAND_16_FONT_ID;
       }
   }
 }

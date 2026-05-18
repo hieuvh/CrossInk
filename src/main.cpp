@@ -119,15 +119,52 @@ EpdFont bitter16ItalicFont(&bitter_16_italic);
 EpdFont bitter16BoldItalicFont(&bitter_16_bolditalic);
 EpdFontFamily bitter16FontFamily(&bitter16RegularFont, &bitter16BoldFont, &bitter16ItalicFont, &bitter16BoldItalicFont);
 
-EpdFont smallFont(&inter_8_regular);
+#ifndef OMIT_TEENSY_FONT
+EpdFont quicksand8RegularFont(&quicksand_8_regular);
+EpdFont quicksand8BoldFont(&quicksand_8_bold);
+EpdFont quicksand8ItalicFont(&quicksand_8_italic);
+EpdFont quicksand8BoldItalicFont(&quicksand_8_bolditalic);
+EpdFontFamily quicksand8FontFamily(&quicksand8RegularFont, &quicksand8BoldFont, &quicksand8ItalicFont,
+                                   &quicksand8BoldItalicFont);
+#endif
+#ifndef OMIT_TINY_FONT
+EpdFont quicksand10RegularFont(&quicksand_10_regular);
+EpdFont quicksand10BoldFont(&quicksand_10_bold);
+EpdFont quicksand10ItalicFont(&quicksand_10_italic);
+EpdFont quicksand10BoldItalicFont(&quicksand_10_bolditalic);
+EpdFontFamily quicksand10FontFamily(&quicksand10RegularFont, &quicksand10BoldFont, &quicksand10ItalicFont,
+                                    &quicksand10BoldItalicFont);
+#endif
+#ifndef OMIT_SMALL_FONT
+EpdFont quicksand12RegularFont(&quicksand_12_regular);
+EpdFont quicksand12BoldFont(&quicksand_12_bold);
+EpdFont quicksand12ItalicFont(&quicksand_12_italic);
+EpdFont quicksand12BoldItalicFont(&quicksand_12_bolditalic);
+EpdFontFamily quicksand12FontFamily(&quicksand12RegularFont, &quicksand12BoldFont, &quicksand12ItalicFont,
+                                    &quicksand12BoldItalicFont);
+#endif
+EpdFont quicksand14RegularFont(&quicksand_14_regular);
+EpdFont quicksand14BoldFont(&quicksand_14_bold);
+EpdFont quicksand14ItalicFont(&quicksand_14_italic);
+EpdFont quicksand14BoldItalicFont(&quicksand_14_bolditalic);
+EpdFontFamily quicksand14FontFamily(&quicksand14RegularFont, &quicksand14BoldFont, &quicksand14ItalicFont,
+                                    &quicksand14BoldItalicFont);
+EpdFont quicksand16RegularFont(&quicksand_16_regular);
+EpdFont quicksand16BoldFont(&quicksand_16_bold);
+EpdFont quicksand16ItalicFont(&quicksand_16_italic);
+EpdFont quicksand16BoldItalicFont(&quicksand_16_bolditalic);
+EpdFontFamily quicksand16FontFamily(&quicksand16RegularFont, &quicksand16BoldFont, &quicksand16ItalicFont,
+                                    &quicksand16BoldItalicFont);
+
+EpdFont smallFont(&quicksand_sb_8_regular);
 EpdFontFamily smallFontFamily(&smallFont);
 
-EpdFont ui10RegularFont(&inter_10_regular);
-EpdFont ui10BoldFont(&inter_10_bold);
+EpdFont ui10RegularFont(&quicksand_sb_10_regular);
+EpdFont ui10BoldFont(&quicksand_sb_10_bold);
 EpdFontFamily ui10FontFamily(&ui10RegularFont, &ui10BoldFont);
 
-EpdFont ui12RegularFont(&inter_12_regular);
-EpdFont ui12BoldFont(&inter_12_bold);
+EpdFont ui12RegularFont(&quicksand_sb_12_regular);
+EpdFont ui12BoldFont(&quicksand_sb_12_bold);
 EpdFontFamily ui12FontFamily(&ui12RegularFont, &ui12BoldFont);
 
 // measurement of power button press duration calibration value
@@ -378,6 +415,19 @@ void setupDisplayAndFonts() {
 #endif
   renderer.insertFont(BITTER_14_FONT_ID, bitter14FontFamily);
   renderer.insertFont(BITTER_16_FONT_ID, bitter16FontFamily);
+
+#ifndef OMIT_TEENSY_FONT
+  renderer.insertFont(QUICKSAND_8_FONT_ID, quicksand8FontFamily);
+#endif
+#ifndef OMIT_TINY_FONT
+  renderer.insertFont(QUICKSAND_10_FONT_ID, quicksand10FontFamily);
+#endif
+#ifndef OMIT_SMALL_FONT
+  renderer.insertFont(QUICKSAND_12_FONT_ID, quicksand12FontFamily);
+#endif
+  renderer.insertFont(QUICKSAND_14_FONT_ID, quicksand14FontFamily);
+  renderer.insertFont(QUICKSAND_16_FONT_ID, quicksand16FontFamily);
+
   renderer.insertFont(UI_10_FONT_ID, ui10FontFamily);
   renderer.insertFont(UI_12_FONT_ID, ui12FontFamily);
   renderer.insertFont(SMALL_FONT_ID, smallFontFamily);
