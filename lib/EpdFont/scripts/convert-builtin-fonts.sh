@@ -105,7 +105,7 @@ PHM_FALLBACK_RANGES=(
   0x91CA,0x91CA
 )
 
-READING_FONT_SIZES=(8 10 12 14 16)
+READING_FONT_SIZES=(10 12 14 16)
 READING_FONT_STYLES=("Regular" "Bold" "Italic" "BoldItalic")
 READING_FONT_RENDER_ARGS=(--2bit --compress --pnum --darken-aa)
 
@@ -202,7 +202,7 @@ echo "Generated ../builtinFonts/quicksand_sb_8_regular.h"
 # Quicksand ships no italic master; the italic/bolditalic slots reuse the
 # upright Medium/Bold so italic body text degrades to upright instead of
 # missing glyphs.
-QUICKSAND_SIZES=(8 10 12 14 16)
+QUICKSAND_SIZES=(10 12 14 16)
 for size in ${QUICKSAND_SIZES[@]}; do
   for spec in "regular:Medium" "bold:Bold" "italic:Medium" "bolditalic:Bold"; do
     slot="${spec%%:*}"

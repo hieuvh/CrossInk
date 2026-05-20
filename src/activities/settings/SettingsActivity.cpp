@@ -439,8 +439,8 @@ void SettingsActivity::render(RenderLock&&) {
     const int labelWidth = renderer.getTextWidth(SMALL_FONT_ID, "CrossInk " CROSSINK_VERSION);
     const int labelX = (pageWidth - labelWidth) / 2;
     const int labelY =
-        pageHeight - metrics.buttonHintsHeight - metrics.verticalSpacing - 15;  // 15px above the button hints
-    renderer.drawText(SMALL_FONT_ID, labelX, labelY, "Version " CROSSINK_VERSION);
+        pageHeight - metrics.buttonHintsHeight - metrics.verticalSpacing - 12;  // 12px above the button hints
+    renderer.drawText(SMALL_FONT_ID, labelX, labelY, "Customink " CROSSINK_VERSION);
   }
 
   // Draw help text

@@ -379,20 +379,20 @@ void LyraCarouselTheme::drawRecentBookCover(GfxRenderer& renderer, Rect rect,
     constexpr int footerTopPad = 2;
     int infoY = dotsY + kDotSize + 8 + footerTopPad;
 
-    // if (hasStats) {
-    //   char buf[48];
-    //   char statLine[64];
-    //   BookReadingStats::formatDuration(stats->totalReadingSeconds, buf, sizeof(buf));
-    //   snprintf(statLine, sizeof(statLine), "%s%s", tr(STR_STATS_TOTAL_TIME), buf);
-    //   const int totalTimeW = renderer.getTextWidth(SMALL_FONT_ID, statLine);
-    //   renderer.drawText(SMALL_FONT_ID, textCenterX - totalTimeW / 2, infoY, statLine, true);
-    //   infoY += statsLineHeight + kStatsToProgressGap;
-    // }
+    if (hasStats) {
+      char buf[48];
+      char statLine[64];
+      BookReadingStats::formatDuration(stats->totalReadingSeconds, buf, sizeof(buf));
+      snprintf(statLine, sizeof(statLine), "%s%s", tr(STR_STATS_TOTAL_TIME), buf);
+      const int totalTimeW = renderer.getTextWidth(SMALL_FONT_ID, statLine);
+      renderer.drawText(SMALL_FONT_ID, textCenterX - totalTimeW / 2, infoY, statLine, true);
+      infoY += statsLineHeight + kStatsToProgressGap;
+    }
 
     if (hasProgress) {
       constexpr int progressBarHeight = 4;
       constexpr int progressTopPad = 2;
-      const int progressBarWidth = centerCoverSlotRect.width;
+      const int progressBarWidth = centerCoverSlotRect.width - 20;
       const int filledWidth =
           std::clamp(static_cast<int>((progressPercent / 100.0f) * progressBarWidth), 0, progressBarWidth);
       char progressLabel[16];
@@ -400,7 +400,7 @@ void LyraCarouselTheme::drawRecentBookCover(GfxRenderer& renderer, Rect rect,
       const int progressLabelW = renderer.getTextWidth(UI_10_FONT_ID, progressLabel, EpdFontFamily::BOLD);
       renderer.drawText(UI_10_FONT_ID, textCenterX - progressLabelW / 2, infoY + progressTopPad, progressLabel, true,
                         EpdFontFamily::BOLD);
-      const int progressBarX = textCenterX - progressBarWidth / 2;
+      const int progressBarX = textCenterX - progressBarWidth / 2 + 4;
       const int progressBarY = infoY + progressTopPad + progressLineHeight + 2;
       renderer.drawRect(progressBarX, progressBarY, progressBarWidth, progressBarHeight, true);
       if (filledWidth > 0) {

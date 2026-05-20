@@ -56,14 +56,6 @@ EpdFont lexenddeca14ItalicFont(&lexenddeca_14_italic);
 EpdFont lexenddeca14BoldItalicFont(&lexenddeca_14_bolditalic);
 EpdFontFamily lexenddeca14FontFamily(&lexenddeca14RegularFont, &lexenddeca14BoldFont, &lexenddeca14ItalicFont,
                                      &lexenddeca14BoldItalicFont);
-#ifndef OMIT_TEENSY_FONT
-EpdFont lexenddeca8RegularFont(&lexenddeca_8_regular);
-EpdFont lexenddeca8BoldFont(&lexenddeca_8_bold);
-EpdFont lexenddeca8ItalicFont(&lexenddeca_8_italic);
-EpdFont lexenddeca8BoldItalicFont(&lexenddeca_8_bolditalic);
-EpdFontFamily lexenddeca8FontFamily(&lexenddeca8RegularFont, &lexenddeca8BoldFont, &lexenddeca8ItalicFont,
-                                    &lexenddeca8BoldItalicFont);
-#endif
 #ifndef OMIT_TINY_FONT
 EpdFont lexenddeca10RegularFont(&lexenddeca_10_regular);
 EpdFont lexenddeca10BoldFont(&lexenddeca_10_bold);
@@ -87,13 +79,6 @@ EpdFont lexenddeca16BoldItalicFont(&lexenddeca_16_bolditalic);
 EpdFontFamily lexenddeca16FontFamily(&lexenddeca16RegularFont, &lexenddeca16BoldFont, &lexenddeca16ItalicFont,
                                      &lexenddeca16BoldItalicFont);
 
-#ifndef OMIT_TEENSY_FONT
-EpdFont bitter8RegularFont(&bitter_8_regular);
-EpdFont bitter8BoldFont(&bitter_8_bold);
-EpdFont bitter8ItalicFont(&bitter_8_italic);
-EpdFont bitter8BoldItalicFont(&bitter_8_bolditalic);
-EpdFontFamily bitter8FontFamily(&bitter8RegularFont, &bitter8BoldFont, &bitter8ItalicFont, &bitter8BoldItalicFont);
-#endif
 #ifndef OMIT_TINY_FONT
 EpdFont bitter10RegularFont(&bitter_10_regular);
 EpdFont bitter10BoldFont(&bitter_10_bold);
@@ -119,14 +104,6 @@ EpdFont bitter16ItalicFont(&bitter_16_italic);
 EpdFont bitter16BoldItalicFont(&bitter_16_bolditalic);
 EpdFontFamily bitter16FontFamily(&bitter16RegularFont, &bitter16BoldFont, &bitter16ItalicFont, &bitter16BoldItalicFont);
 
-#ifndef OMIT_TEENSY_FONT
-EpdFont quicksand8RegularFont(&quicksand_8_regular);
-EpdFont quicksand8BoldFont(&quicksand_8_bold);
-EpdFont quicksand8ItalicFont(&quicksand_8_italic);
-EpdFont quicksand8BoldItalicFont(&quicksand_8_bolditalic);
-EpdFontFamily quicksand8FontFamily(&quicksand8RegularFont, &quicksand8BoldFont, &quicksand8ItalicFont,
-                                   &quicksand8BoldItalicFont);
-#endif
 #ifndef OMIT_TINY_FONT
 EpdFont quicksand10RegularFont(&quicksand_10_regular);
 EpdFont quicksand10BoldFont(&quicksand_10_bold);
@@ -392,9 +369,6 @@ void setupDisplayAndFonts() {
   fontCacheManager.setFontDecompressor(&fontDecompressor);
   renderer.setFontCacheManager(&fontCacheManager);
 
-#ifndef OMIT_TEENSY_FONT
-  renderer.insertFont(LEXENDDECA_8_FONT_ID, lexenddeca8FontFamily);
-#endif
 #ifndef OMIT_TINY_FONT
   renderer.insertFont(LEXENDDECA_10_FONT_ID, lexenddeca10FontFamily);
 #endif
@@ -404,9 +378,6 @@ void setupDisplayAndFonts() {
   renderer.insertFont(LEXENDDECA_14_FONT_ID, lexenddeca14FontFamily);
   renderer.insertFont(LEXENDDECA_16_FONT_ID, lexenddeca16FontFamily);
 
-#ifndef OMIT_TEENSY_FONT
-  renderer.insertFont(BITTER_8_FONT_ID, bitter8FontFamily);
-#endif
 #ifndef OMIT_TINY_FONT
   renderer.insertFont(BITTER_10_FONT_ID, bitter10FontFamily);
 #endif
@@ -416,9 +387,6 @@ void setupDisplayAndFonts() {
   renderer.insertFont(BITTER_14_FONT_ID, bitter14FontFamily);
   renderer.insertFont(BITTER_16_FONT_ID, bitter16FontFamily);
 
-#ifndef OMIT_TEENSY_FONT
-  renderer.insertFont(QUICKSAND_8_FONT_ID, quicksand8FontFamily);
-#endif
 #ifndef OMIT_TINY_FONT
   renderer.insertFont(QUICKSAND_10_FONT_ID, quicksand10FontFamily);
 #endif

@@ -63,11 +63,10 @@ The UI now uses [Inter](https://fonts.google.com/specimen/Inter) as the display 
 
 ### Font Sizes
 
-The **tiny** build variant includes emoji/symbol support across 5 font sizes:
+The **customink** build variant includes emoji/symbol support across 4 font sizes:
 
 - Emoji & Misc. Symbols Support
-- 5 Font sizes:
-  - Teensy (8pt)
+- 4 Font sizes:
   - Tiny (10pt)
   - Small (12pt)
   - Medium (14pt)
@@ -270,7 +269,7 @@ git submodule update --init --recursive
 Connect your Xteink X4 to your computer via USB-C and run the following command.
 
 ```sh
-pio run -e tiny --target upload
+pio run -e customink --target upload
 ```
 
 ### Debugging

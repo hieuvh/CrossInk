@@ -8,8 +8,7 @@
 // Generate the variants with lib/EpdFont/scripts/convert-builtin-fonts.sh.
 //
 // Per-size guards:
-//   OMIT_TEENSY_FONT - excludes 8px (Teensy) reading fonts; used by env:xlarge
-//   OMIT_TINY_FONT   - excludes 10px (Tiny) reading fonts; used by env:xlarge
+//   OMIT_TINY_FONT   - excludes 10px (Tiny) reading fonts
 //   OMIT_SMALL_FONT  - excludes 12px (Small) reading fonts
 #ifdef OMIT_EMOJI_FONTS
 #define BUILTIN_READING_FONT_HEADER(name) <builtinFonts/noemoji/name.h>
@@ -19,12 +18,6 @@
 #define BUILTIN_READING_FONT_HEADER(name) <builtinFonts/name.h>
 #endif
 
-#ifndef OMIT_TEENSY_FONT
-#include BUILTIN_READING_FONT_HEADER(bitter_8_bold)
-#include BUILTIN_READING_FONT_HEADER(bitter_8_bolditalic)
-#include BUILTIN_READING_FONT_HEADER(bitter_8_italic)
-#include BUILTIN_READING_FONT_HEADER(bitter_8_regular)
-#endif
 #ifndef OMIT_TINY_FONT
 #include BUILTIN_READING_FONT_HEADER(bitter_10_bold)
 #include BUILTIN_READING_FONT_HEADER(bitter_10_bolditalic)
@@ -46,12 +39,6 @@
 #include BUILTIN_READING_FONT_HEADER(bitter_16_italic)
 #include BUILTIN_READING_FONT_HEADER(bitter_16_regular)
 
-#ifndef OMIT_TEENSY_FONT
-#include BUILTIN_READING_FONT_HEADER(lexenddeca_8_bold)
-#include BUILTIN_READING_FONT_HEADER(lexenddeca_8_bolditalic)
-#include BUILTIN_READING_FONT_HEADER(lexenddeca_8_italic)
-#include BUILTIN_READING_FONT_HEADER(lexenddeca_8_regular)
-#endif
 #ifndef OMIT_TINY_FONT
 #include BUILTIN_READING_FONT_HEADER(lexenddeca_10_bold)
 #include BUILTIN_READING_FONT_HEADER(lexenddeca_10_bolditalic)
@@ -79,12 +66,6 @@
 // so direct includes work regardless of OMIT_EMOJI_FONTS / OMIT_PHM.
 // Italic/BoldItalic slots are generated from Quicksand-Medium / Quicksand-Bold
 // because Quicksand ships no italic master.
-#ifndef OMIT_TEENSY_FONT
-#include <builtinFonts/quicksand_8_bold.h>
-#include <builtinFonts/quicksand_8_bolditalic.h>
-#include <builtinFonts/quicksand_8_italic.h>
-#include <builtinFonts/quicksand_8_regular.h>
-#endif
 #ifndef OMIT_TINY_FONT
 #include <builtinFonts/quicksand_10_bold.h>
 #include <builtinFonts/quicksand_10_bolditalic.h>

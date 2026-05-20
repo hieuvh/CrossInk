@@ -2,11 +2,6 @@
 #pragma once
 
 #ifdef OMIT_EMOJI_FONTS
-#define LEXENDDECA_8_FONT_ID (-1529542243)
-#else
-#define LEXENDDECA_8_FONT_ID (-2007827299)
-#endif
-#ifdef OMIT_EMOJI_FONTS
 #define LEXENDDECA_10_FONT_ID (-1178760654)
 #else
 #define LEXENDDECA_10_FONT_ID (-833446840)
@@ -25,11 +20,6 @@
 #define LEXENDDECA_16_FONT_ID (-1174553084)
 #else
 #define LEXENDDECA_16_FONT_ID (-654563150)
-#endif
-#ifdef OMIT_EMOJI_FONTS
-#define BITTER_8_FONT_ID (396692004)
-#else
-#define BITTER_8_FONT_ID (954763661)
 #endif
 #ifdef OMIT_EMOJI_FONTS
 #define BITTER_10_FONT_ID (-1655643523)
@@ -51,7 +41,6 @@
 #else
 #define BITTER_16_FONT_ID (1209964980)
 #endif
-#define QUICKSAND_8_FONT_ID (267872324)
 #define QUICKSAND_10_FONT_ID (391393583)
 #define QUICKSAND_12_FONT_ID (-329322055)
 #define QUICKSAND_14_FONT_ID (-86035046)
@@ -62,17 +51,14 @@
 
 // Font ID 0 is reserved as the "not found" sentinel.
 // Guard against any hash accidentally producing 0.
-static_assert(LEXENDDECA_8_FONT_ID != 0, "Font ID collision with sentinel");
 static_assert(LEXENDDECA_10_FONT_ID != 0, "Font ID collision with sentinel");
 static_assert(LEXENDDECA_12_FONT_ID != 0, "Font ID collision with sentinel");
 static_assert(LEXENDDECA_14_FONT_ID != 0, "Font ID collision with sentinel");
 static_assert(LEXENDDECA_16_FONT_ID != 0, "Font ID collision with sentinel");
-static_assert(BITTER_8_FONT_ID != 0, "Font ID collision with sentinel");
 static_assert(BITTER_10_FONT_ID != 0, "Font ID collision with sentinel");
 static_assert(BITTER_12_FONT_ID != 0, "Font ID collision with sentinel");
 static_assert(BITTER_14_FONT_ID != 0, "Font ID collision with sentinel");
 static_assert(BITTER_16_FONT_ID != 0, "Font ID collision with sentinel");
-static_assert(QUICKSAND_8_FONT_ID != 0, "Font ID collision with sentinel");
 static_assert(QUICKSAND_10_FONT_ID != 0, "Font ID collision with sentinel");
 static_assert(QUICKSAND_12_FONT_ID != 0, "Font ID collision with sentinel");
 static_assert(QUICKSAND_14_FONT_ID != 0, "Font ID collision with sentinel");

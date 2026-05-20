@@ -35,6 +35,7 @@ body:
       label: Build Variant
       description: What build variant are you using?
       options:
+        - customink
         - tiny
     validations:
       required: true

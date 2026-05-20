@@ -64,14 +64,14 @@ jobs:
       - name: Build CrossPoint
         env:
           CROSSPOINT_RELEASE_VERSION: ${{ env.RELEASE_VERSION }}
-        run: pio run -e tiny
+        run: pio run -e customink
 
       - name: Generate release catalog
         run: |
           python3 scripts/generate_release_catalog.py \
             --version "${{ env.RELEASE_VERSION }}" \
             --repo "${{ github.repository }}" \
-            --firmware ".pio/build/tiny/firmware-tiny-v${{ env.RELEASE_VERSION }}.bin" \
+            --firmware ".pio/build/customink/firmware-customink-v${{ env.RELEASE_VERSION }}.bin" \
             --output ".pio/build/catalog"
 
       - name: Publish catalog to GitHub Pages source
@@ -100,4 +100,4 @@ jobs:
           target_commitish: ${{ github.sha }}
           draft: true
           files: |
-            .pio/build/tiny/firmware-tiny-v${{ env.RELEASE_VERSION }}.bin
+            .pio/build/customink/firmware-customink-v${{ env.RELEASE_VERSION }}.bin

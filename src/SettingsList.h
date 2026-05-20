@@ -172,9 +172,6 @@ inline std::vector<SettingInfo> getSettingsList(const SdCardFontRegistry* regist
 #endif
                               StrId::STR_MEDIUM,
                               StrId::STR_LARGE,
-#ifndef OMIT_TEENSY_FONT
-                              StrId::STR_TEENSY,
-#endif
                           },
                           "fontSize", StrId::STR_CAT_READER),
         SettingInfo::Enum(StrId::STR_LINE_SPACING, &CrossPointSettings::lineSpacing,

@@ -41,8 +41,6 @@ reading_font_id() {
 }
 
 # Reading fonts - support OMIT_EMOJI_FONTS
-reading_font_id LEXENDDECA_8_FONT_ID \
-  ./lexenddeca_8_regular.h ./lexenddeca_8_bold.h ./lexenddeca_8_bolditalic.h ./lexenddeca_8_italic.h
 reading_font_id LEXENDDECA_10_FONT_ID \
   ./lexenddeca_10_regular.h ./lexenddeca_10_bold.h ./lexenddeca_10_bolditalic.h ./lexenddeca_10_italic.h
 reading_font_id LEXENDDECA_12_FONT_ID \
@@ -52,8 +50,6 @@ reading_font_id LEXENDDECA_14_FONT_ID \
 reading_font_id LEXENDDECA_16_FONT_ID \
   ./lexenddeca_16_regular.h ./lexenddeca_16_bold.h ./lexenddeca_16_bolditalic.h ./lexenddeca_16_italic.h
 
-reading_font_id BITTER_8_FONT_ID \
-  ./bitter_8_regular.h ./bitter_8_bold.h ./bitter_8_bolditalic.h ./bitter_8_italic.h
 reading_font_id BITTER_10_FONT_ID \
   ./bitter_10_regular.h ./bitter_10_bold.h ./bitter_10_bolditalic.h ./bitter_10_italic.h
 reading_font_id BITTER_12_FONT_ID \
@@ -65,7 +61,6 @@ reading_font_id BITTER_16_FONT_ID \
 
 # Quicksand reading font - single variant only (no emoji/PHM fallback faces
 # baked in), so the reading_font_id helper's noemoji/ branch isn't needed.
-echo "#define QUICKSAND_8_FONT_ID ($(hash_files ./quicksand_8_regular.h ./quicksand_8_bold.h ./quicksand_8_bolditalic.h ./quicksand_8_italic.h))"
 echo "#define QUICKSAND_10_FONT_ID ($(hash_files ./quicksand_10_regular.h ./quicksand_10_bold.h ./quicksand_10_bolditalic.h ./quicksand_10_italic.h))"
 echo "#define QUICKSAND_12_FONT_ID ($(hash_files ./quicksand_12_regular.h ./quicksand_12_bold.h ./quicksand_12_bolditalic.h ./quicksand_12_italic.h))"
 echo "#define QUICKSAND_14_FONT_ID ($(hash_files ./quicksand_14_regular.h ./quicksand_14_bold.h ./quicksand_14_bolditalic.h ./quicksand_14_italic.h))"
@@ -81,9 +76,9 @@ echo ""
 echo "// Font ID 0 is reserved as the \"not found\" sentinel."
 echo "// Guard against any hash accidentally producing 0."
 for id in \
-  LEXENDDECA_8_FONT_ID LEXENDDECA_10_FONT_ID LEXENDDECA_12_FONT_ID LEXENDDECA_14_FONT_ID LEXENDDECA_16_FONT_ID \
-  BITTER_8_FONT_ID BITTER_10_FONT_ID BITTER_12_FONT_ID BITTER_14_FONT_ID BITTER_16_FONT_ID \
-  QUICKSAND_8_FONT_ID QUICKSAND_10_FONT_ID QUICKSAND_12_FONT_ID QUICKSAND_14_FONT_ID QUICKSAND_16_FONT_ID \
+  LEXENDDECA_10_FONT_ID LEXENDDECA_12_FONT_ID LEXENDDECA_14_FONT_ID LEXENDDECA_16_FONT_ID \
+  BITTER_10_FONT_ID BITTER_12_FONT_ID BITTER_14_FONT_ID BITTER_16_FONT_ID \
+  QUICKSAND_10_FONT_ID QUICKSAND_12_FONT_ID QUICKSAND_14_FONT_ID QUICKSAND_16_FONT_ID \
   UI_10_FONT_ID UI_12_FONT_ID SMALL_FONT_ID; do
   echo "static_assert(${id} != 0, \"Font ID collision with sentinel\");"
 done

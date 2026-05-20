@@ -102,4 +102,4 @@ jobs:
           draft: true
           prerelease: true
           files: |
-            .pio/build/tiny/firmware-tiny-${{ env.RC_BRANCH_SAFE }}-${{ env.RC_HASH_SHORT }}-RC.bin
+            .pio/build/customink/firmware-customink-${{ env.RC_BRANCH_SAFE }}-${{ env.RC_HASH_SHORT }}-RC.bin

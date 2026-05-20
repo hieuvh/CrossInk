@@ -33,22 +33,12 @@ constexpr char LANG_FILE_BIN[] = "/.crosspoint/language.bin";
 constexpr char LANG_FILE_BAK[] = "/.crosspoint/language.bin.bak";
 constexpr uint8_t INVALID_READER_FONT_SIZE = 0xFF;
 constexpr CrossPointSettings::FONT_SIZE READER_FONT_SIZE_STORAGE_ORDER[] = {
-    CrossPointSettings::TINY,     CrossPointSettings::SMALL,       CrossPointSettings::MEDIUM,
-    CrossPointSettings::LARGE,    CrossPointSettings::EXTRA_LARGE, CrossPointSettings::TEENSY,
-    CrossPointSettings::HUGE_SIZE};
+    CrossPointSettings::TINY, CrossPointSettings::SMALL, CrossPointSettings::MEDIUM, CrossPointSettings::LARGE};
 constexpr CrossPointSettings::FONT_SIZE READER_FONT_SIZE_CYCLE_ORDER[] = {
-    CrossPointSettings::TEENSY,   CrossPointSettings::TINY,  CrossPointSettings::SMALL,
-    CrossPointSettings::MEDIUM,   CrossPointSettings::LARGE, CrossPointSettings::EXTRA_LARGE,
-    CrossPointSettings::HUGE_SIZE};
+    CrossPointSettings::TINY, CrossPointSettings::SMALL, CrossPointSettings::MEDIUM, CrossPointSettings::LARGE};
 
 bool isReaderFontSizeAvailable(const CrossPointSettings::FONT_SIZE size) {
   switch (size) {
-    case CrossPointSettings::TEENSY:
-#ifdef OMIT_TEENSY_FONT
-      return false;
-#else
-      return true;
-#endif
     case CrossPointSettings::TINY:
 #ifdef OMIT_TINY_FONT
       return false;
@@ -475,10 +465,6 @@ int CrossPointSettings::getReaderFontId() const {
     case LEXENDDECA:
     default:
       switch (effectiveSize) {
-#ifndef OMIT_TEENSY_FONT
-        case TEENSY:
-          return LEXENDDECA_8_FONT_ID;
-#endif
 #ifndef OMIT_TINY_FONT
         case TINY:
           return LEXENDDECA_10_FONT_ID;
@@ -495,10 +481,6 @@ int CrossPointSettings::getReaderFontId() const {
       }
     case BITTER:
       switch (effectiveSize) {
-#ifndef OMIT_TEENSY_FONT
-        case TEENSY:
-          return BITTER_8_FONT_ID;
-#endif
 #ifndef OMIT_TINY_FONT
         case TINY:
           return BITTER_10_FONT_ID;
@@ -515,10 +497,6 @@ int CrossPointSettings::getReaderFontId() const {
       }
     case QUICKSAND:
       switch (effectiveSize) {
-#ifndef OMIT_TEENSY_FONT
-        case TEENSY:
-          return QUICKSAND_8_FONT_ID;
-#endif
 #ifndef OMIT_TINY_FONT
         case TINY:
           return QUICKSAND_10_FONT_ID;
