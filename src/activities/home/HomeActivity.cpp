@@ -1333,19 +1333,29 @@ void HomeActivity::updateSlidingWindowCache(int centerIdx, int bookCount) {
   // Fill both adjacent slots. Called once for prev, once for next.
   // Prefers uninitialized slots (book index -1) over evicting valid frames.
   // When eviction is required, removes the slot furthest from center.
+  //
+  // Disk loads (~50ms) run even when a new render is pending — they're cheap
+  // enough that pre-warming the adjacent slot is worth the small extra wait
+  // before the next render fires. Only the expensive renderCarouselFrame
+  // (~500ms full re-render) is skipped on pending so the queued navigation
+  // doesn't sit behind a from-scratch render.
   auto renderMissing = [&](int missingIdx) {
     if (gCarouselCache.findFrameSlot(missingIdx) >= 0) return;
-    // A new render request means the user navigated; stop prerendering so the
-    // render task can process the queued navigation without a 1-2s delay.
-    if (activityManager.hasPendingRender()) return;
+
+    auto loadOrRender = [&](int slot) {
+      if (loadCarouselFrameFromDisk(gCarouselCache.keyHash, bookCount, missingIdx, slot)) {
+        renderedCount++;
+        return;
+      }
+      if (activityManager.hasPendingRender()) return;
+      renderCarouselFrame(missingIdx, slot);
+      renderedCount++;
+    };
 
     // Prefer an uninitialized slot so we don't evict a valid neighbor.
     for (int i = 0; i < kCarouselFrameCount; ++i) {
       if (gCarouselCache.frames[i] && gCarouselCache.frameBookIdx[i] < 0) {
-        if (!loadCarouselFrameFromDisk(gCarouselCache.keyHash, bookCount, missingIdx, i)) {
-          renderCarouselFrame(missingIdx, i);
-        }
-        renderedCount++;
+        loadOrRender(i);
         return;
       }
     }
@@ -1366,15 +1376,27 @@ void HomeActivity::updateSlidingWindowCache(int centerIdx, int bookCount) {
     if (evictSlot >= 0) {
       LOG_DBG("HOME", "carousel: evict slot %d (book %d) -> book %d", evictSlot, gCarouselCache.frameBookIdx[evictSlot],
               missingIdx);
-      if (!loadCarouselFrameFromDisk(gCarouselCache.keyHash, bookCount, missingIdx, evictSlot)) {
-        renderCarouselFrame(missingIdx, evictSlot);
-      }
-      renderedCount++;
+      loadOrRender(evictSlot);
     }
   };
 
-  renderMissing(prevIdx);
-  renderMissing(nextIdx);
+  // Prefetch in the direction of travel first. If the user just pressed Right
+  // (centerIdx advanced by one), fill nextIdx before prevIdx so the very next
+  // Right press is a cache hit. Falls back to (prev, next) order when no
+  // direction is known yet (first navigation after entering Home).
+  bool movingForward = true;
+  if (gCarouselCache.lastCenterIdx >= 0 && gCarouselCache.lastCenterIdx != centerIdx && bookCount > 1) {
+    const int forwardDist = (centerIdx - gCarouselCache.lastCenterIdx + bookCount) % bookCount;
+    const int backwardDist = (gCarouselCache.lastCenterIdx - centerIdx + bookCount) % bookCount;
+    movingForward = forwardDist <= backwardDist;
+  }
+  if (movingForward) {
+    renderMissing(nextIdx);
+    renderMissing(prevIdx);
+  } else {
+    renderMissing(prevIdx);
+    renderMissing(nextIdx);
+  }
   gCarouselCache.lastCenterIdx = centerIdx;
   LOG_DBG("HOME", "carousel: updateSlidingWindowCache center=%d rendered=%d took %lums", centerIdx, renderedCount,
           millis() - start);
