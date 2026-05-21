@@ -780,12 +780,17 @@ void HomeActivity::renderCarouselFrameToCurrentBuffer(int bookIdx, BookReadingSt
   // selectedIndex = -1: cache frames store the unselected state. The selection
   // highlight is applied as a cheap overlay at render time via
   // drawButtonMenuSelectionOverlay, so all book frames share one cached base image.
+  //
+  // IMPORTANT: this rect must match the one used in render()'s slow path
+  // (see "menuStartY/menuEndY" below) — the LyraCarousel theme now anchors the
+  // menu inside the rect, so a different rect here would bake the icons at a
+  // different Y than the live overlay expects, leaving the icon area blank.
+  const int preRenderMenuStartY = metrics.homeTopPadding + metrics.homeCoverTileHeight + metrics.homeMenuTopOffset;
+  const int preRenderMenuEndY = pageHeight - metrics.buttonHintsHeight;
+  const int preRenderMenuHeight = std::max(0, preRenderMenuEndY - preRenderMenuStartY);
   GUI.drawButtonMenu(
-      renderer,
-      Rect{0, metrics.homeTopPadding + metrics.homeCoverTileHeight + metrics.verticalSpacing, pageWidth,
-           pageHeight - (metrics.headerHeight + metrics.homeTopPadding + metrics.verticalSpacing * 2 +
-                         metrics.buttonHintsHeight)},
-      static_cast<int>(menuItems.size()), -1, [&menuItems](int index) { return std::string(menuItems[index].label); },
+      renderer, Rect{0, preRenderMenuStartY, pageWidth, preRenderMenuHeight}, static_cast<int>(menuItems.size()), -1,
+      [&menuItems](int index) { return std::string(menuItems[index].label); },
       [&menuItems](int index) { return menuItems[index].icon; });
 
   const auto labels = mappedInput.mapLabels("", tr(STR_SELECT), tr(STR_DIR_LEFT), tr(STR_DIR_RIGHT));
@@ -1212,8 +1217,15 @@ void HomeActivity::render(RenderLock&&) {
         const auto menuItems = buildHomeMenuItems(hasOpdsServers, hasReadingStats, hasBookmarks);
         if (static_cast<CrossPointSettings::UI_THEME>(SETTINGS.uiTheme) ==
             CrossPointSettings::UI_THEME::LYRA_CAROUSEL) {
+          // Same rect the cached frame was rendered against in the slow path
+          // below, so the overlay's tile coordinates line up exactly with the
+          // baked-in icon positions.
+          const int menuStartY = metrics.homeTopPadding + metrics.homeCoverTileHeight + metrics.homeMenuTopOffset;
+          const int menuEndY = pageHeight - metrics.buttonHintsHeight;
+          const int menuHeight = std::max(0, menuEndY - menuStartY);
           static_cast<const LyraCarouselTheme&>(GUI).drawButtonMenuSelectionOverlay(
-              renderer, static_cast<int>(menuItems.size()), selectorIndex - recentBooks.size(),
+              renderer, Rect{0, menuStartY, pageWidth, menuHeight}, static_cast<int>(menuItems.size()),
+              selectorIndex - recentBooks.size(),
               [&menuItems](int index) { return std::string(menuItems[index].label); },
               [&menuItems](int index) { return menuItems[index].icon; });
         }
