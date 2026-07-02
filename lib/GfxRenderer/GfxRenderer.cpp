@@ -1511,6 +1511,31 @@ void GfxRenderer::displayBuffer(const HalDisplay::RefreshMode refreshMode, const
   display.displayBuffer(refreshMode, fadingFix || turnOffScreen);
 }
 
+void GfxRenderer::displayWindow(int x, int y, int width, int height) const {
+  if (width <= 0 || height <= 0) return;
+
+  int px1, py1, px2, py2, px3, py3, px4, py4;
+  rotateCoordinates(orientation, x, y, &px1, &py1, panelWidth, panelHeight);
+  rotateCoordinates(orientation, x + width - 1, y, &px2, &py2, panelWidth, panelHeight);
+  rotateCoordinates(orientation, x, y + height - 1, &px3, &py3, panelWidth, panelHeight);
+  rotateCoordinates(orientation, x + width - 1, y + height - 1, &px4, &py4, panelWidth, panelHeight);
+
+  int minX = std::min({px1, px2, px3, px4});
+  int maxX = std::max({px1, px2, px3, px4});
+  int minY = std::min({py1, py2, py3, py4});
+  int maxY = std::max({py1, py2, py3, py4});
+
+  int physX = std::max(0, minX);
+  int physY = std::max(0, minY);
+  int physW = std::min(static_cast<int>(panelWidth) - physX, maxX - minX + 1);
+  int physH = std::min(static_cast<int>(panelHeight) - physY, maxY - minY + 1);
+
+  if (physW <= 0 || physH <= 0) return;
+
+  display.displayWindow(static_cast<uint16_t>(physX), static_cast<uint16_t>(physY),
+                        static_cast<uint16_t>(physW), static_cast<uint16_t>(physH));
+}
+
 std::string GfxRenderer::truncatedText(const int fontId, const char* text, const int maxWidth,
                                        const EpdFontFamily::Style style) const {
   if (!text || maxWidth <= 0) return "";

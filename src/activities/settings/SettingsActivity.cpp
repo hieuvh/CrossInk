@@ -1,6 +1,7 @@
 #include "SettingsActivity.h"
 
 #include <GfxRenderer.h>
+#include <HalGPIO.h>
 #include <Logging.h>
 
 #include <algorithm>
@@ -452,10 +453,72 @@ void SettingsActivity::render(RenderLock&&) {
 
   renderer.clearScreen();
   drawSettingsContent();
-  // Always use standard refresh for settings screen
-  renderer.displayBuffer();
+
+  bool useWindowedUpdate = false;
+  int yMin = 0;
+  int yHeight = pageHeight;
+
+#ifdef SIMULATOR
+  const bool isX3 = false;
+#else
+  const bool isX3 = gpio.deviceIsX3();
+#endif
+
+  if (!isX3 && previousCategoryIndex == selectedCategoryIndex && previousSettingIndex != -1) {
+    int rowHeight = BaseMetrics::values.listRowHeight;
+    Rect listRect(0, metrics.topPadding + metrics.headerHeight + metrics.tabBarHeight + metrics.verticalSpacing, pageWidth,
+                  pageHeight - (metrics.topPadding + metrics.headerHeight + metrics.tabBarHeight + metrics.buttonHintsHeight +
+                                metrics.verticalSpacing * 2));
+    int pageItems = listRect.height / rowHeight;
+
+    int prevPage = (previousSettingIndex - 1) / pageItems;
+    int newPage = (selectedSettingIndex - 1) / pageItems;
+    if (previousSettingIndex == 0) prevPage = 0;
+    if (selectedSettingIndex == 0) newPage = 0;
+
+    if (prevPage == newPage && std::abs(selectedSettingIndex - previousSettingIndex) <= 1) {
+      auto getRowY = [&](int idx) {
+        if (idx == 0) {
+          return metrics.topPadding + metrics.headerHeight;
+        }
+        int pageStartIndex = (idx - 1) / pageItems * pageItems;
+        int selY = listRect.y;
+        for (int j = 0; j < (idx - 1) % pageItems; j++) {
+          selY += rowHeight;
+          if (pageStartIndex + j + 1 < settingsCount &&
+              settings[pageStartIndex + j + 1].type == SettingType::SECTION_HEADER) {
+            selY += 15;
+          }
+        }
+        return selY;
+      };
+
+      int prevY = getRowY(previousSettingIndex);
+      int newY = getRowY(selectedSettingIndex);
+      int prevH = (previousSettingIndex == 0) ? metrics.tabBarHeight : rowHeight;
+      int newH = (selectedSettingIndex == 0) ? metrics.tabBarHeight : rowHeight;
+
+      yMin = std::min(prevY, newY) - 4;
+      int yMax = std::max(prevY + prevH, newY + newH) + 4;
+      yHeight = yMax - yMin;
+
+      if (yMin < 0) yMin = 0;
+      if (yMin + yHeight > pageHeight) yHeight = pageHeight - yMin;
+
+      useWindowedUpdate = true;
+    }
+  }
+
+  if (useWindowedUpdate) {
+    renderer.displayWindow(0, yMin, pageWidth, yHeight);
+  } else {
+    renderer.displayBuffer();
+  }
 
   if (SETTINGS.textAntiAliasing) {
     UIRenderUtils::renderUIAntiAliased(renderer, drawSettingsContent);
   }
+
+  previousCategoryIndex = selectedCategoryIndex;
+  previousSettingIndex = selectedSettingIndex;
 }
