@@ -1645,25 +1645,16 @@ void EpubReaderActivity::renderContents(std::unique_ptr<Page> page, const int or
   }
   const auto tDisplay = millis();
 
-  // Save bw buffer to reset buffer state after grayscale data sync
-  const uint32_t bwStoreHeapBefore = esp_get_free_heap_size();
-  const bool storedBwBuffer = renderer.storeBwBuffer();
-  const uint32_t bwStoreHeapAfter = esp_get_free_heap_size();
-  const auto tBwStore = millis();
-  (void)bwStoreHeapBefore;
-  (void)bwStoreHeapAfter;
-  const bool canApplyGrayscale = needsAnyGrayscale && storedBwBuffer;
-  if (needsAnyGrayscale && !storedBwBuffer) {
-    LOG_ERR("ERS", "Skipping grayscale enhancement: failed to store BW backup");
-  }
+  const bool canApplyGrayscale = needsAnyGrayscale;
 
-  // grayscale rendering
   if (canApplyGrayscale) {
-    // If a new render (e.g. another page turn) is already queued, the BW page
-    // is already on-screen and the grayscale "upgrade" would just waste 1-2s
-    // before the next page starts. Skip the whole grayscale phase.
+    const auto tBwStore = millis(); // Kept for timing diffs
+
     if (activityManager.hasPendingRender()) {
-      renderer.restoreBwBuffer();
+      renderer.clearScreen();
+      renderer.setRenderMode(GfxRenderer::BW);
+      page->render(renderer, SETTINGS.getReaderFontId(), orientedMarginLeft, orientedMarginTop);
+      renderer.cleanupGrayscaleWithFrameBuffer();
       LOG_DBG("ERS", "Skip grayscale: page turn queued before AA started");
       return;
     }
@@ -1678,15 +1669,15 @@ void EpubReaderActivity::renderContents(std::unique_ptr<Page> page, const int or
     renderer.copyGrayscaleLsbBuffers();
     const auto tGrayLsb = millis();
 
-    // Same check between passes — the MSB render is ~half the AA budget.
     if (activityManager.hasPendingRender()) {
+      renderer.clearScreen();
       renderer.setRenderMode(GfxRenderer::BW);
-      renderer.restoreBwBuffer();
+      page->render(renderer, SETTINGS.getReaderFontId(), orientedMarginLeft, orientedMarginTop);
+      renderer.cleanupGrayscaleWithFrameBuffer();
       LOG_DBG("ERS", "Skip grayscale MSB: page turn queued after LSB pass (lsb=%lums)", tGrayLsb - tBwStore);
       return;
     }
 
-    // MSB pass: build on the LSB result without clearing (dark-gray pixels already WHITE).
     renderer.setRenderMode(GfxRenderer::GRAYSCALE_MSB);
     if (needsTextGrayscale) {
       page->render(renderer, SETTINGS.getReaderFontId(), orientedMarginLeft, orientedMarginTop);
@@ -1696,37 +1687,27 @@ void EpubReaderActivity::renderContents(std::unique_ptr<Page> page, const int or
     renderer.copyGrayscaleMsbBuffers();
     const auto tGrayMsb = millis();
 
-    // display grayscale part
     renderer.displayGrayBuffer();
     const auto tGrayDisplay = millis();
     renderer.setRenderMode(GfxRenderer::BW);
-    // restore the bw data
-    renderer.restoreBwBuffer();
+
+    // Re-render BW to restore framebuffer state
+    renderer.clearScreen();
+    page->render(renderer, SETTINGS.getReaderFontId(), orientedMarginLeft, orientedMarginTop);
+    renderer.cleanupGrayscaleWithFrameBuffer();
     const auto tBwRestore = millis();
 
     const auto tEnd = millis();
     LOG_DBG("ERS",
-            "Page render: prewarm=%lums bw_render=%lums display=%lums bw_store=%lums bw_store_ok=%d "
-            "bw_store_heap_before=%lu bw_store_heap_after=%lu bw_store_heap_delta=%ld "
+            "Page render: prewarm=%lums bw_render=%lums display=%lums "
             "gray_lsb=%lums gray_msb=%lums gray_display=%lums bw_restore=%lums total=%lums",
-            tPrewarm - t0, tBwRender - tPrewarm, tDisplay - tBwRender, tBwStore - tDisplay, storedBwBuffer,
-            bwStoreHeapBefore, bwStoreHeapAfter, (int32_t)bwStoreHeapAfter - (int32_t)bwStoreHeapBefore,
+            tPrewarm - t0, tBwRender - tPrewarm, tDisplay - tBwRender,
             tGrayLsb - tBwStore, tGrayMsb - tGrayLsb, tGrayDisplay - tGrayMsb, tBwRestore - tGrayDisplay, tEnd - t0);
   } else {
-    if (storedBwBuffer) {
-      // Restore the BW data when we skipped grayscale entirely.
-      renderer.restoreBwBuffer();
-    }
-    const auto tBwRestore = millis();
-
     const auto tEnd = millis();
     LOG_DBG("ERS",
-            "Page render: prewarm=%lums bw_render=%lums display=%lums bw_store=%lums bw_store_ok=%d "
-            "bw_store_heap_before=%lu bw_store_heap_after=%lu bw_store_heap_delta=%ld "
-            "bw_restore=%lums total=%lums",
-            tPrewarm - t0, tBwRender - tPrewarm, tDisplay - tBwRender, tBwStore - tDisplay, storedBwBuffer,
-            bwStoreHeapBefore, bwStoreHeapAfter, (int32_t)bwStoreHeapAfter - (int32_t)bwStoreHeapBefore,
-            tBwRestore - tBwStore, tEnd - t0);
+            "Page render: prewarm=%lums bw_render=%lums display=%lums total=%lums",
+            tPrewarm - t0, tBwRender - tPrewarm, tDisplay - tBwRender, tEnd - t0);
   }
 }
 

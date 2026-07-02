@@ -89,13 +89,7 @@ inline void displayWithRefreshCycle(const GfxRenderer& renderer, int& pagesUntil
 // Kept as a template to avoid std::function overhead; instantiated once per reader type.
 template <typename RenderFn, typename AbortFn>
 void renderAntiAliased(GfxRenderer& renderer, RenderFn&& renderFn, AbortFn&& shouldAbort) {
-  if (!renderer.storeBwBuffer()) {
-    LOG_ERR("READER", "Failed to store BW buffer for anti-aliasing");
-    return;
-  }
-
   if (shouldAbort()) {
-    renderer.restoreBwBuffer();
     return;
   }
 
@@ -106,7 +100,9 @@ void renderAntiAliased(GfxRenderer& renderer, RenderFn&& renderFn, AbortFn&& sho
 
   if (shouldAbort()) {
     renderer.setRenderMode(GfxRenderer::BW);
-    renderer.restoreBwBuffer();
+    renderer.clearScreen();
+    renderFn();
+    renderer.cleanupGrayscaleWithFrameBuffer();
     return;
   }
 
@@ -121,7 +117,9 @@ void renderAntiAliased(GfxRenderer& renderer, RenderFn&& renderFn, AbortFn&& sho
   renderer.displayGrayBuffer();
   renderer.setRenderMode(GfxRenderer::BW);
 
-  renderer.restoreBwBuffer();
+  renderer.clearScreen();
+  renderFn();
+  renderer.cleanupGrayscaleWithFrameBuffer();
 }
 
 // Convenience overload — no cancellation.
