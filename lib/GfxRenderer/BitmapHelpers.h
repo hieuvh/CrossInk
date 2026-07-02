@@ -302,3 +302,20 @@ class FloydSteinbergDitherer {
   int16_t* errorCurRow;
   int16_t* errorNextRow;
 };
+
+inline void sharpenRow(uint8_t* row, int width, float amount) {
+  if (amount <= 0.0f || width < 3) return;
+
+  int prev_orig = row[0];
+  for (int x = 1; x < width - 1; x++) {
+    int curr_orig = row[x];
+    int next_orig = row[x + 1];
+    int neighbors = (prev_orig + next_orig) >> 1;
+    int sharpened = curr_orig + static_cast<int>(amount * (curr_orig - neighbors));
+    if (sharpened < 0) sharpened = 0;
+    if (sharpened > 255) sharpened = 255;
+    row[x] = static_cast<uint8_t>(sharpened);
+    prev_orig = curr_orig;
+  }
+}
+

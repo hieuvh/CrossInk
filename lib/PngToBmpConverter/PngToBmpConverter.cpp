@@ -4,6 +4,7 @@
 #include <HalStorage.h>
 #include <InflateReader.h>
 #include <Logging.h>
+#include <CrossPointSettings.h>
 
 #include <cstdio>
 #include <cstring>
@@ -647,8 +648,6 @@ bool PngToBmpConverter::pngFileToBmpStreamInternal(FsFile& pngFile, Print& bmpOu
     nextOutY_srcStart = scaleY_fp;
   }
 
-  // Allocate grayscale row buffer - batch-convert each scanline to avoid
-  // per-pixel getPixelGray() switch overhead in the hot loops
   auto* grayRow = static_cast<uint8_t*>(malloc(width));
   if (!grayRow) {
     LOG_ERR("PNG", "Failed to allocate grayscale row buffer");
@@ -661,6 +660,24 @@ bool PngToBmpConverter::pngFileToBmpStreamInternal(FsFile& pngFile, Print& bmpOu
     free(ctx.currentRow);
     free(ctx.previousRow);
     return false;
+  }
+
+  uint8_t* sharpenBuf = nullptr;
+  if (SETTINGS.imageSharpening > 0) {
+    sharpenBuf = static_cast<uint8_t*>(malloc(outWidth));
+    if (!sharpenBuf) {
+      LOG_ERR("PNG", "Failed to allocate sharpen buffer");
+      free(grayRow);
+      delete[] rowAccum;
+      delete[] rowCount;
+      delete atkinsonDitherer;
+      delete fsDitherer;
+      delete atkinson1BitDitherer;
+      free(rowBuffer);
+      free(ctx.currentRow);
+      free(ctx.previousRow);
+      return false;
+    }
   }
 
   bool success = true;
@@ -676,19 +693,29 @@ bool PngToBmpConverter::pngFileToBmpStreamInternal(FsFile& pngFile, Print& bmpOu
 
     // Batch-convert entire scanline to grayscale (one branch, tight loop)
     convertScanlineToGray(ctx, grayRow);
-
     if (!needsScaling) {
       // Direct output (no scaling)
       memset(rowBuffer, 0, bytesPerRow);
 
+      float sharpenAmount = 0.0f;
+      if (SETTINGS.imageSharpening == 1) sharpenAmount = 0.3f;
+      else if (SETTINGS.imageSharpening == 2) sharpenAmount = 0.6f;
+
+      const uint8_t* processedRow = grayRow;
+      if (sharpenAmount > 0.0f && sharpenBuf) {
+        memcpy(sharpenBuf, grayRow, outWidth);
+        sharpenRow(sharpenBuf, outWidth, sharpenAmount);
+        processedRow = sharpenBuf;
+      }
+
       if (USE_8BIT_OUTPUT && !oneBit) {
         for (int x = 0; x < outWidth; x++) {
-          rowBuffer[x] = adjustPixel(grayRow[x]);
+          rowBuffer[x] = adjustPixel(processedRow[x]);
         }
       } else if (oneBit) {
         for (int x = 0; x < outWidth; x++) {
           const uint8_t bit =
-              atkinson1BitDitherer ? atkinson1BitDitherer->processPixel(grayRow[x], x) : quantize1bit(grayRow[x], x, y);
+              atkinson1BitDitherer ? atkinson1BitDitherer->processPixel(processedRow[x], x) : quantize1bit(processedRow[x], x, y);
           const int byteIndex = x / 8;
           const int bitOffset = 7 - (x % 8);
           rowBuffer[byteIndex] |= (bit << bitOffset);
@@ -696,7 +723,7 @@ bool PngToBmpConverter::pngFileToBmpStreamInternal(FsFile& pngFile, Print& bmpOu
         if (atkinson1BitDitherer) atkinson1BitDitherer->nextRow();
       } else {
         for (int x = 0; x < outWidth; x++) {
-          const uint8_t gray = adjustPixel(grayRow[x]);
+          const uint8_t gray = adjustPixel(processedRow[x]);
           uint8_t twoBit;
           if (atkinsonDitherer) {
             twoBit = atkinsonDitherer->processPixel(gray, x);
@@ -745,40 +772,85 @@ bool PngToBmpConverter::pngFileToBmpStreamInternal(FsFile& pngFile, Print& bmpOu
       while (srcY_fp >= nextOutY_srcStart && currentOutY < outHeight) {
         memset(rowBuffer, 0, bytesPerRow);
 
-        if (USE_8BIT_OUTPUT && !oneBit) {
+        float sharpenAmount = 0.0f;
+        if (SETTINGS.imageSharpening == 1) sharpenAmount = 0.3f;
+        else if (SETTINGS.imageSharpening == 2) sharpenAmount = 0.6f;
+
+        if (sharpenAmount > 0.0f && sharpenBuf) {
           for (int x = 0; x < outWidth; x++) {
-            const uint8_t gray = (rowCount[x] > 0) ? (rowAccum[x] / rowCount[x]) : 0;
-            rowBuffer[x] = adjustPixel(gray);
+            sharpenBuf[x] = (rowCount[x] > 0) ? (rowAccum[x] / rowCount[x]) : 0;
           }
-        } else if (oneBit) {
-          for (int x = 0; x < outWidth; x++) {
-            const uint8_t gray = (rowCount[x] > 0) ? (rowAccum[x] / rowCount[x]) : 0;
-            const uint8_t bit =
-                atkinson1BitDitherer ? atkinson1BitDitherer->processPixel(gray, x) : quantize1bit(gray, x, currentOutY);
-            const int byteIndex = x / 8;
-            const int bitOffset = 7 - (x % 8);
-            rowBuffer[byteIndex] |= (bit << bitOffset);
-          }
-          if (atkinson1BitDitherer) atkinson1BitDitherer->nextRow();
-        } else {
-          for (int x = 0; x < outWidth; x++) {
-            const uint8_t gray = adjustPixel((rowCount[x] > 0) ? (rowAccum[x] / rowCount[x]) : 0);
-            uint8_t twoBit;
-            if (atkinsonDitherer) {
-              twoBit = atkinsonDitherer->processPixel(gray, x);
-            } else if (fsDitherer) {
-              twoBit = fsDitherer->processPixel(gray, x);
-            } else {
-              twoBit = quantize(gray, x, currentOutY);
+          sharpenRow(sharpenBuf, outWidth, sharpenAmount);
+
+          if (USE_8BIT_OUTPUT && !oneBit) {
+            for (int x = 0; x < outWidth; x++) {
+              rowBuffer[x] = adjustPixel(sharpenBuf[x]);
             }
-            const int byteIndex = (x * 2) / 8;
-            const int bitOffset = 6 - ((x * 2) % 8);
-            rowBuffer[byteIndex] |= (twoBit << bitOffset);
+          } else if (oneBit) {
+            for (int x = 0; x < outWidth; x++) {
+              const uint8_t bit =
+                  atkinson1BitDitherer ? atkinson1BitDitherer->processPixel(sharpenBuf[x], x) : quantize1bit(sharpenBuf[x], x, currentOutY);
+              const int byteIndex = x / 8;
+              const int bitOffset = 7 - (x % 8);
+              rowBuffer[byteIndex] |= (bit << bitOffset);
+            }
+            if (atkinson1BitDitherer) atkinson1BitDitherer->nextRow();
+          } else {
+            for (int x = 0; x < outWidth; x++) {
+              const uint8_t gray = adjustPixel(sharpenBuf[x]);
+              uint8_t twoBit;
+              if (atkinsonDitherer) {
+                twoBit = atkinsonDitherer->processPixel(gray, x);
+              } else if (fsDitherer) {
+                twoBit = fsDitherer->processPixel(gray, x);
+              } else {
+                twoBit = quantize(gray, x, currentOutY);
+              }
+              const int byteIndex = (x * 2) / 8;
+              const int bitOffset = 6 - ((x * 2) % 8);
+              rowBuffer[byteIndex] |= (twoBit << bitOffset);
+            }
+            if (atkinsonDitherer)
+              atkinsonDitherer->nextRow();
+            else if (fsDitherer)
+              fsDitherer->nextRow();
           }
-          if (atkinsonDitherer)
-            atkinsonDitherer->nextRow();
-          else if (fsDitherer)
-            fsDitherer->nextRow();
+        } else {
+          if (USE_8BIT_OUTPUT && !oneBit) {
+            for (int x = 0; x < outWidth; x++) {
+              const uint8_t gray = (rowCount[x] > 0) ? (rowAccum[x] / rowCount[x]) : 0;
+              rowBuffer[x] = adjustPixel(gray);
+            }
+          } else if (oneBit) {
+            for (int x = 0; x < outWidth; x++) {
+              const uint8_t gray = (rowCount[x] > 0) ? (rowAccum[x] / rowCount[x]) : 0;
+              const uint8_t bit =
+                  atkinson1BitDitherer ? atkinson1BitDitherer->processPixel(gray, x) : quantize1bit(gray, x, currentOutY);
+              const int byteIndex = x / 8;
+              const int bitOffset = 7 - (x % 8);
+              rowBuffer[byteIndex] |= (bit << bitOffset);
+            }
+            if (atkinson1BitDitherer) atkinson1BitDitherer->nextRow();
+          } else {
+            for (int x = 0; x < outWidth; x++) {
+              const uint8_t gray = adjustPixel((rowCount[x] > 0) ? (rowAccum[x] / rowCount[x]) : 0);
+              uint8_t twoBit;
+              if (atkinsonDitherer) {
+                twoBit = atkinsonDitherer->processPixel(gray, x);
+              } else if (fsDitherer) {
+                twoBit = fsDitherer->processPixel(gray, x);
+              } else {
+                twoBit = quantize(gray, x, currentOutY);
+              }
+              const int byteIndex = (x * 2) / 8;
+              const int bitOffset = 6 - ((x * 2) % 8);
+              rowBuffer[byteIndex] |= (twoBit << bitOffset);
+            }
+            if (atkinsonDitherer)
+              atkinsonDitherer->nextRow();
+            else if (fsDitherer)
+              fsDitherer->nextRow();
+          }
         }
 
         bmpOut.write(rowBuffer, bytesPerRow);
@@ -788,11 +860,8 @@ bool PngToBmpConverter::pngFileToBmpStreamInternal(FsFile& pngFile, Print& bmpOu
 
         // For upscaling: don't reset accumulators if next output row uses same source data
         // Only reset when we'll move to a new source row
-        if (srcY_fp >= nextOutY_srcStart) {
-          // More output rows to emit from same source - keep accumulator data
-          continue;
-        }
-        // Moving to next source row - reset accumulators
+        if (srcY_fp >= nextOutY_srcStart) continue;
+
         memset(rowAccum, 0, outWidth * sizeof(uint32_t));
         memset(rowCount, 0, outWidth * sizeof(uint16_t));
       }
@@ -806,6 +875,7 @@ bool PngToBmpConverter::pngFileToBmpStreamInternal(FsFile& pngFile, Print& bmpOu
 
   // Clean up
   free(grayRow);
+  free(sharpenBuf);
   delete[] rowAccum;
   delete[] rowCount;
   delete atkinsonDitherer;

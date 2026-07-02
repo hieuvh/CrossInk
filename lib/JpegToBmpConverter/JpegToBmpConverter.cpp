@@ -4,6 +4,7 @@
 #include <HalStorage.h>
 #include <JPEGDEC.h>
 #include <Logging.h>
+#include <CrossPointSettings.h>
 
 #include <cstdio>
 #include <cstring>
@@ -220,6 +221,7 @@ struct BmpConvertCtx {
   uint32_t* rowCount;
 
   uint8_t* bmpRow;
+  uint8_t* sharpenBuf;
 
   AtkinsonDitherer* atkinsonDitherer;
   FloydSteinbergDitherer* fsDitherer;
@@ -232,20 +234,31 @@ struct BmpConvertCtx {
 static void writeOutputRow(BmpConvertCtx* ctx, const uint8_t* srcRow, int outY) {
   memset(ctx->bmpRow, 0, ctx->bytesPerRow);
 
+  float sharpenAmount = 0.0f;
+  if (SETTINGS.imageSharpening == 1) sharpenAmount = 0.3f;
+  else if (SETTINGS.imageSharpening == 2) sharpenAmount = 0.6f;
+
+  const uint8_t* processedRow = srcRow;
+  if (sharpenAmount > 0.0f && ctx->sharpenBuf) {
+    memcpy(ctx->sharpenBuf, srcRow, ctx->outWidth);
+    sharpenRow(ctx->sharpenBuf, ctx->outWidth, sharpenAmount);
+    processedRow = ctx->sharpenBuf;
+  }
+
   if (USE_8BIT_OUTPUT && !ctx->oneBit) {
     for (int x = 0; x < ctx->outWidth; x++) {
-      ctx->bmpRow[x] = adjustPixel(srcRow[x]);
+      ctx->bmpRow[x] = adjustPixel(processedRow[x]);
     }
   } else if (ctx->oneBit) {
     for (int x = 0; x < ctx->outWidth; x++) {
-      const uint8_t bit = ctx->atkinson1BitDitherer ? ctx->atkinson1BitDitherer->processPixel(srcRow[x], x)
-                                                    : quantize1bit(srcRow[x], x, outY);
+      const uint8_t bit = ctx->atkinson1BitDitherer ? ctx->atkinson1BitDitherer->processPixel(processedRow[x], x)
+                                                    : quantize1bit(processedRow[x], x, outY);
       ctx->bmpRow[x / 8] |= (bit << (7 - (x % 8)));
     }
     if (ctx->atkinson1BitDitherer) ctx->atkinson1BitDitherer->nextRow();
   } else {
     for (int x = 0; x < ctx->outWidth; x++) {
-      const uint8_t gray = adjustPixel(srcRow[x]);
+      const uint8_t gray = adjustPixel(processedRow[x]);
       uint8_t twoBit;
       if (ctx->atkinsonDitherer) {
         twoBit = ctx->atkinsonDitherer->processPixel(gray, x);
@@ -269,36 +282,77 @@ static void writeOutputRow(BmpConvertCtx* ctx, const uint8_t* srcRow, int outY) 
 static void flushScaledRow(BmpConvertCtx* ctx) {
   memset(ctx->bmpRow, 0, ctx->bytesPerRow);
 
-  if (USE_8BIT_OUTPUT && !ctx->oneBit) {
+  float sharpenAmount = 0.0f;
+  if (SETTINGS.imageSharpening == 1) sharpenAmount = 0.3f;
+  else if (SETTINGS.imageSharpening == 2) sharpenAmount = 0.6f;
+
+  if (sharpenAmount > 0.0f && ctx->sharpenBuf) {
     for (int x = 0; x < ctx->outWidth; x++) {
-      const uint8_t gray = (ctx->rowCount[x] > 0) ? (ctx->rowAccum[x] / ctx->rowCount[x]) : 0;
-      ctx->bmpRow[x] = adjustPixel(gray);
+      ctx->sharpenBuf[x] = (ctx->rowCount[x] > 0) ? (ctx->rowAccum[x] / ctx->rowCount[x]) : 0;
     }
-  } else if (ctx->oneBit) {
-    for (int x = 0; x < ctx->outWidth; x++) {
-      const uint8_t gray = (ctx->rowCount[x] > 0) ? (ctx->rowAccum[x] / ctx->rowCount[x]) : 0;
-      const uint8_t bit = ctx->atkinson1BitDitherer ? ctx->atkinson1BitDitherer->processPixel(gray, x)
-                                                    : quantize1bit(gray, x, ctx->currentOutY);
-      ctx->bmpRow[x / 8] |= (bit << (7 - (x % 8)));
-    }
-    if (ctx->atkinson1BitDitherer) ctx->atkinson1BitDitherer->nextRow();
-  } else {
-    for (int x = 0; x < ctx->outWidth; x++) {
-      const uint8_t gray = adjustPixel((ctx->rowCount[x] > 0) ? (ctx->rowAccum[x] / ctx->rowCount[x]) : 0);
-      uint8_t twoBit;
-      if (ctx->atkinsonDitherer) {
-        twoBit = ctx->atkinsonDitherer->processPixel(gray, x);
-      } else if (ctx->fsDitherer) {
-        twoBit = ctx->fsDitherer->processPixel(gray, x);
-      } else {
-        twoBit = quantize(gray, x, ctx->currentOutY);
+    sharpenRow(ctx->sharpenBuf, ctx->outWidth, sharpenAmount);
+
+    if (USE_8BIT_OUTPUT && !ctx->oneBit) {
+      for (int x = 0; x < ctx->outWidth; x++) {
+        ctx->bmpRow[x] = adjustPixel(ctx->sharpenBuf[x]);
       }
-      ctx->bmpRow[(x * 2) / 8] |= (twoBit << (6 - ((x * 2) % 8)));
+    } else if (ctx->oneBit) {
+      for (int x = 0; x < ctx->outWidth; x++) {
+        const uint8_t bit = ctx->atkinson1BitDitherer ? ctx->atkinson1BitDitherer->processPixel(ctx->sharpenBuf[x], x)
+                                                      : quantize1bit(ctx->sharpenBuf[x], x, ctx->currentOutY);
+        ctx->bmpRow[x / 8] |= (bit << (7 - (x % 8)));
+      }
+      if (ctx->atkinson1BitDitherer) ctx->atkinson1BitDitherer->nextRow();
+    } else {
+      for (int x = 0; x < ctx->outWidth; x++) {
+        const uint8_t gray = adjustPixel(ctx->sharpenBuf[x]);
+        uint8_t twoBit;
+        if (ctx->atkinsonDitherer) {
+          twoBit = ctx->atkinsonDitherer->processPixel(gray, x);
+        } else if (ctx->fsDitherer) {
+          twoBit = ctx->fsDitherer->processPixel(gray, x);
+        } else {
+          twoBit = quantize(gray, x, ctx->currentOutY);
+        }
+        ctx->bmpRow[(x * 2) / 8] |= (twoBit << (6 - ((x * 2) % 8)));
+      }
+      if (ctx->atkinsonDitherer)
+        ctx->atkinsonDitherer->nextRow();
+      else if (ctx->fsDitherer)
+        ctx->fsDitherer->nextRow();
     }
-    if (ctx->atkinsonDitherer)
-      ctx->atkinsonDitherer->nextRow();
-    else if (ctx->fsDitherer)
-      ctx->fsDitherer->nextRow();
+  } else {
+    if (USE_8BIT_OUTPUT && !ctx->oneBit) {
+      for (int x = 0; x < ctx->outWidth; x++) {
+        const uint8_t gray = (ctx->rowCount[x] > 0) ? (ctx->rowAccum[x] / ctx->rowCount[x]) : 0;
+        ctx->bmpRow[x] = adjustPixel(gray);
+      }
+    } else if (ctx->oneBit) {
+      for (int x = 0; x < ctx->outWidth; x++) {
+        const uint8_t gray = (ctx->rowCount[x] > 0) ? (ctx->rowAccum[x] / ctx->rowCount[x]) : 0;
+        const uint8_t bit = ctx->atkinson1BitDitherer ? ctx->atkinson1BitDitherer->processPixel(gray, x)
+                                                      : quantize1bit(gray, x, ctx->currentOutY);
+        ctx->bmpRow[x / 8] |= (bit << (7 - (x % 8)));
+      }
+      if (ctx->atkinson1BitDitherer) ctx->atkinson1BitDitherer->nextRow();
+    } else {
+      for (int x = 0; x < ctx->outWidth; x++) {
+        const uint8_t gray = adjustPixel((ctx->rowCount[x] > 0) ? (ctx->rowAccum[x] / ctx->rowCount[x]) : 0);
+        uint8_t twoBit;
+        if (ctx->atkinsonDitherer) {
+          twoBit = ctx->atkinsonDitherer->processPixel(gray, x);
+        } else if (ctx->fsDitherer) {
+          twoBit = ctx->fsDitherer->processPixel(gray, x);
+        } else {
+          twoBit = quantize(gray, x, ctx->currentOutY);
+        }
+        ctx->bmpRow[(x * 2) / 8] |= (twoBit << (6 - ((x * 2) % 8)));
+      }
+      if (ctx->atkinsonDitherer)
+        ctx->atkinsonDitherer->nextRow();
+      else if (ctx->fsDitherer)
+        ctx->fsDitherer->nextRow();
+    }
   }
 
   ctx->bmpOut->write(ctx->bmpRow, ctx->bytesPerRow);
@@ -485,6 +539,7 @@ bool JpegToBmpConverter::jpegFileToBmpStreamInternal(FsFile& jpegFile, Print& bm
       delete ctx.atkinson1BitDitherer;
       free(ctx.mcuBuf);
       free(ctx.bmpRow);
+      free(ctx.sharpenBuf);
       jpeg->close();
       delete jpeg;
     }
@@ -502,6 +557,15 @@ bool JpegToBmpConverter::jpegFileToBmpStreamInternal(FsFile& jpegFile, Print& bm
   if (!ctx.bmpRow) {
     LOG_ERR("JPG", "Failed to allocate BMP row buffer");
     return false;
+  }
+
+  // Allocate sharpen buffer if sharpening enabled
+  if (SETTINGS.imageSharpening > 0) {
+    ctx.sharpenBuf = static_cast<uint8_t*>(malloc(outWidth));
+    if (!ctx.sharpenBuf) {
+      LOG_ERR("JPG", "Failed to allocate sharpen buffer");
+      return false;
+    }
   }
 
   if (needsScaling) {

@@ -238,6 +238,7 @@ class CrossPointSettings {
   uint8_t extraParagraphSpacing = 1;
   uint8_t forceParagraphIndents = 0;
   uint8_t textAntiAliasing = 1;
+  uint8_t imageSharpening = 1; // 0=off, 1=subtle, 2=strong
   // Short power button action behaviour
   uint8_t shortPwrBtn = IGNORE;
   // Long power button action behaviour
