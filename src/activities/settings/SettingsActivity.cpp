@@ -22,6 +22,7 @@
 #include "StatusBarSettingsActivity.h"
 #include "SyncTimeNowActivity.h"
 #include "activities/network/WifiSelectionActivity.h"
+#include "activities/util/UIRenderUtils.h"
 #include "components/UITheme.h"
 #include "fontIds.h"
 
@@ -385,71 +386,76 @@ void SettingsActivity::toggleCurrentSetting() {
 }
 
 void SettingsActivity::render(RenderLock&&) {
-  renderer.clearScreen();
-
   const auto pageWidth = renderer.getScreenWidth();
   const auto pageHeight = renderer.getScreenHeight();
-
   const auto& metrics = UITheme::getInstance().getMetrics();
-
-  GUI.drawHeader(renderer, Rect{0, metrics.topPadding, pageWidth, metrics.headerHeight}, tr(STR_SETTINGS_TITLE));
-
-  std::vector<TabInfo> tabs;
-  tabs.reserve(categoryCount);
-  for (int i = 0; i < categoryCount; i++) {
-    tabs.push_back({I18N.get(categoryNames[i]), selectedCategoryIndex == i});
-  }
-  GUI.drawTabBar(renderer, Rect{0, metrics.topPadding + metrics.headerHeight, pageWidth, metrics.tabBarHeight}, tabs,
-                 selectedSettingIndex == 0);
-
   const auto& settings = *currentSettings;
-  GUI.drawList(
-      renderer,
-      Rect{0, metrics.topPadding + metrics.headerHeight + metrics.tabBarHeight + metrics.verticalSpacing, pageWidth,
-           pageHeight - (metrics.topPadding + metrics.headerHeight + metrics.tabBarHeight + metrics.buttonHintsHeight +
-                         metrics.verticalSpacing * 2)},
-      settingsCount, selectedSettingIndex - 1,
-      [&settings](int index) { return std::string(I18N.get(settings[index].nameId)); }, nullptr, nullptr,
-      [&settings](int i) {
-        const auto& setting = settings[i];
-        std::string valueText = "";
-        if (setting.type == SettingType::TOGGLE && setting.valuePtr != nullptr) {
-          const bool value = SETTINGS.*(setting.valuePtr);
-          valueText = value ? tr(STR_STATE_ON) : tr(STR_STATE_OFF);
-        } else if (setting.type == SettingType::ENUM && setting.valuePtr != nullptr) {
-          const uint8_t value = SETTINGS.*(setting.valuePtr);
-          const uint8_t safeValue = value < setting.enumValues.size() ? value : 0;
-          valueText = I18N.get(setting.enumValues[safeValue]);
-        } else if (setting.type == SettingType::ENUM && setting.valueGetter) {
-          const uint8_t value = setting.valueGetter();
-          if (!setting.enumStringValues.empty() && value < setting.enumStringValues.size()) {
-            valueText = setting.enumStringValues[value];
-          } else if (value < setting.enumValues.size()) {
-            valueText = I18N.get(setting.enumValues[value]);
+
+  auto drawSettingsContent = [&]() {
+    GUI.drawHeader(renderer, Rect{0, metrics.topPadding, pageWidth, metrics.headerHeight}, tr(STR_SETTINGS_TITLE));
+
+    std::vector<TabInfo> tabs;
+    tabs.reserve(categoryCount);
+    for (int i = 0; i < categoryCount; i++) {
+      tabs.push_back({I18N.get(categoryNames[i]), selectedCategoryIndex == i});
+    }
+    GUI.drawTabBar(renderer, Rect{0, metrics.topPadding + metrics.headerHeight, pageWidth, metrics.tabBarHeight}, tabs,
+                   selectedSettingIndex == 0);
+
+    GUI.drawList(
+        renderer,
+        Rect{0, metrics.topPadding + metrics.headerHeight + metrics.tabBarHeight + metrics.verticalSpacing, pageWidth,
+             pageHeight - (metrics.topPadding + metrics.headerHeight + metrics.tabBarHeight + metrics.buttonHintsHeight +
+                           metrics.verticalSpacing * 2)},
+        settingsCount, selectedSettingIndex - 1,
+        [&settings](int index) { return std::string(I18N.get(settings[index].nameId)); }, nullptr, nullptr,
+        [&settings](int i) {
+          const auto& setting = settings[i];
+          std::string valueText = "";
+          if (setting.type == SettingType::TOGGLE && setting.valuePtr != nullptr) {
+            const bool value = SETTINGS.*(setting.valuePtr);
+            valueText = value ? tr(STR_STATE_ON) : tr(STR_STATE_OFF);
+          } else if (setting.type == SettingType::ENUM && setting.valuePtr != nullptr) {
+            const uint8_t value = SETTINGS.*(setting.valuePtr);
+            const uint8_t safeValue = value < setting.enumValues.size() ? value : 0;
+            valueText = I18N.get(setting.enumValues[safeValue]);
+          } else if (setting.type == SettingType::ENUM && setting.valueGetter) {
+            const uint8_t value = setting.valueGetter();
+            if (!setting.enumStringValues.empty() && value < setting.enumStringValues.size()) {
+              valueText = setting.enumStringValues[value];
+            } else if (value < setting.enumValues.size()) {
+              valueText = I18N.get(setting.enumValues[value]);
+            }
+          } else if (setting.type == SettingType::VALUE && setting.valuePtr != nullptr) {
+            valueText = std::to_string(SETTINGS.*(setting.valuePtr));
           }
-        } else if (setting.type == SettingType::VALUE && setting.valuePtr != nullptr) {
-          valueText = std::to_string(SETTINGS.*(setting.valuePtr));
-        }
-        return valueText;
-      },
-      true, nullptr, [&settings](int i) { return settings[i].type == SettingType::SECTION_HEADER; });
+          return valueText;
+        },
+        true, nullptr, [&settings](int i) { return settings[i].type == SettingType::SECTION_HEADER; });
 
-  // Draw CrossInk version label at the bottom of the System tab
-  if (selectedCategoryIndex == 3) {
-    const int labelWidth = renderer.getTextWidth(SMALL_FONT_ID, "CrossInk " CROSSINK_VERSION);
-    const int labelX = (pageWidth - labelWidth) / 2;
-    const int labelY =
-        pageHeight - metrics.buttonHintsHeight - metrics.verticalSpacing - 12;  // 12px above the button hints
-    renderer.drawText(SMALL_FONT_ID, labelX, labelY, "Customink " CROSSINK_VERSION);
-  }
+    // Draw CrossInk version label at the bottom of the System tab
+    if (selectedCategoryIndex == 3) {
+      const int labelWidth = renderer.getTextWidth(SMALL_FONT_ID, "CrossInk " CROSSINK_VERSION);
+      const int labelX = (pageWidth - labelWidth) / 2;
+      const int labelY =
+          pageHeight - metrics.buttonHintsHeight - metrics.verticalSpacing - 12;  // 12px above the button hints
+      renderer.drawText(SMALL_FONT_ID, labelX, labelY, "Customink " CROSSINK_VERSION);
+    }
 
-  // Draw help text
-  const auto confirmLabel = (selectedSettingIndex == 0)
-                                ? I18N.get(categoryNames[(selectedCategoryIndex + 1) % categoryCount])
-                                : tr(STR_TOGGLE);
-  const auto labels = mappedInput.mapLabels(tr(STR_BACK), confirmLabel, tr(STR_DIR_UP), tr(STR_DIR_DOWN));
-  GUI.drawButtonHints(renderer, labels.btn1, labels.btn2, labels.btn3, labels.btn4);
+    // Draw help text
+    const auto confirmLabel = (selectedSettingIndex == 0)
+                                  ? I18N.get(categoryNames[(selectedCategoryIndex + 1) % categoryCount])
+                                  : tr(STR_TOGGLE);
+    const auto labels = mappedInput.mapLabels(tr(STR_BACK), confirmLabel, tr(STR_DIR_UP), tr(STR_DIR_DOWN));
+    GUI.drawButtonHints(renderer, labels.btn1, labels.btn2, labels.btn3, labels.btn4);
+  };
 
+  renderer.clearScreen();
+  drawSettingsContent();
   // Always use standard refresh for settings screen
   renderer.displayBuffer();
+
+  if (SETTINGS.textAntiAliasing) {
+    UIRenderUtils::renderUIAntiAliased(renderer, drawSettingsContent);
+  }
 }

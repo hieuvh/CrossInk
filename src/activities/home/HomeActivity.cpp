@@ -20,6 +20,7 @@
 
 #include "../reader/BookReadingStats.h"
 #include "../reader/BookStatsActivity.h"
+#include "../util/UIRenderUtils.h"
 #include "BookmarkStore.h"
 #include "BookmarksHomeActivity.h"
 #include "CrossPointSettings.h"
@@ -1247,43 +1248,50 @@ void HomeActivity::render(RenderLock&&) {
     }
   }
 
+  auto drawHomeContent = [&]() {
+    // Restore previously snapshotted cover pixels to avoid re-reading from SD
+    // when only the menu selection changed (cover bitmap is expensive to load).
+    bool bufferRestored = coverBufferStored && restoreCoverBuffer();
+
+    GUI.drawHeader(renderer, Rect{0, metrics.topPadding, pageWidth, metrics.homeTopPadding},
+                   metrics.homeContinueReadingInMenu && !recentBooks.empty() ? recentBooks[0].title.c_str() : nullptr);
+
+    GUI.drawRecentBookCover(renderer, Rect{0, metrics.homeTopPadding, pageWidth, metrics.homeCoverTileHeight},
+                            recentBooks, selectorIndex, coverRendered, coverBufferStored, bufferRestored,
+                            std::bind(&HomeActivity::storeCoverBuffer, this),
+                            hasAnyBookStats(currentBookStats) ? &currentBookStats : nullptr, currentBookProgressPercent);
+
+    auto menuItems = buildHomeMenuItems(hasOpdsServers, hasReadingStats, hasBookmarks);
+
+    const int menuStartY = metrics.homeTopPadding + metrics.homeCoverTileHeight + metrics.homeMenuTopOffset;
+    const int menuEndY = pageHeight - metrics.buttonHintsHeight;
+    const int menuHeight = std::max(0, menuEndY - menuStartY);
+
+    if (metrics.homeContinueReadingInMenu && !recentBooks.empty()) {
+      // Insert Continue Reading at the top if enabled in theme
+      menuItems.insert(menuItems.begin(), {tr(STR_CONTINUE_READING), Book, HomeMenuAction::ContinueReading});
+    }
+
+    GUI.drawButtonMenu(
+        renderer, Rect{0, menuStartY, pageWidth, menuHeight}, static_cast<int>(menuItems.size()),
+        selectorIndex - getHomeMenuSelectionOffset(recentBooks),
+        [&menuItems](int index) { return std::string(menuItems[index].label); },
+        [&menuItems](int index) { return menuItems[index].icon; });
+
+    const bool isCarouselTheme =
+        static_cast<CrossPointSettings::UI_THEME>(SETTINGS.uiTheme) == CrossPointSettings::UI_THEME::LYRA_CAROUSEL;
+    const auto labels = isCarouselTheme ? mappedInput.mapLabels("", tr(STR_SELECT), tr(STR_DIR_LEFT), tr(STR_DIR_RIGHT))
+                                        : mappedInput.mapLabels("", tr(STR_SELECT), tr(STR_DIR_UP), tr(STR_DIR_DOWN));
+    GUI.drawButtonHints(renderer, labels.btn1, labels.btn2, labels.btn3, labels.btn4);
+  };
+
   renderer.clearScreen();
-  // Restore previously snapshotted cover pixels to avoid re-reading from SD
-  // when only the menu selection changed (cover bitmap is expensive to load).
-  bool bufferRestored = coverBufferStored && restoreCoverBuffer();
-
-  GUI.drawHeader(renderer, Rect{0, metrics.topPadding, pageWidth, metrics.homeTopPadding},
-                 metrics.homeContinueReadingInMenu && !recentBooks.empty() ? recentBooks[0].title.c_str() : nullptr);
-
-  GUI.drawRecentBookCover(renderer, Rect{0, metrics.homeTopPadding, pageWidth, metrics.homeCoverTileHeight},
-                          recentBooks, selectorIndex, coverRendered, coverBufferStored, bufferRestored,
-                          std::bind(&HomeActivity::storeCoverBuffer, this),
-                          hasAnyBookStats(currentBookStats) ? &currentBookStats : nullptr, currentBookProgressPercent);
-
-  auto menuItems = buildHomeMenuItems(hasOpdsServers, hasReadingStats, hasBookmarks);
-
-  const int menuStartY = metrics.homeTopPadding + metrics.homeCoverTileHeight + metrics.homeMenuTopOffset;
-  const int menuEndY = pageHeight - metrics.buttonHintsHeight;
-  const int menuHeight = std::max(0, menuEndY - menuStartY);
-
-  if (metrics.homeContinueReadingInMenu && !recentBooks.empty()) {
-    // Insert Continue Reading at the top if enabled in theme
-    menuItems.insert(menuItems.begin(), {tr(STR_CONTINUE_READING), Book, HomeMenuAction::ContinueReading});
-  }
-
-  GUI.drawButtonMenu(
-      renderer, Rect{0, menuStartY, pageWidth, menuHeight}, static_cast<int>(menuItems.size()),
-      selectorIndex - getHomeMenuSelectionOffset(recentBooks),
-      [&menuItems](int index) { return std::string(menuItems[index].label); },
-      [&menuItems](int index) { return menuItems[index].icon; });
-
-  const bool isCarouselTheme =
-      static_cast<CrossPointSettings::UI_THEME>(SETTINGS.uiTheme) == CrossPointSettings::UI_THEME::LYRA_CAROUSEL;
-  const auto labels = isCarouselTheme ? mappedInput.mapLabels("", tr(STR_SELECT), tr(STR_DIR_LEFT), tr(STR_DIR_RIGHT))
-                                      : mappedInput.mapLabels("", tr(STR_SELECT), tr(STR_DIR_UP), tr(STR_DIR_DOWN));
-  GUI.drawButtonHints(renderer, labels.btn1, labels.btn2, labels.btn3, labels.btn4);
-
+  drawHomeContent();
   renderer.displayBuffer();
+
+  if (SETTINGS.textAntiAliasing) {
+    UIRenderUtils::renderUIAntiAliased(renderer, drawHomeContent);
+  }
 
   if (!firstRenderDone) {
     firstRenderDone = true;
