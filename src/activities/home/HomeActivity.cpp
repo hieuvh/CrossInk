@@ -1226,7 +1226,7 @@ void HomeActivity::render(RenderLock&&) {
           const int menuHeight = std::max(0, menuEndY - menuStartY);
           static_cast<const LyraCarouselTheme&>(GUI).drawButtonMenuSelectionOverlay(
               renderer, Rect{0, menuStartY, pageWidth, menuHeight}, static_cast<int>(menuItems.size()),
-              selectorIndex - recentBooks.size(),
+              selectorIndex - getHomeMenuSelectionOffset(recentBooks),
               [&menuItems](int index) { return std::string(menuItems[index].label); },
               [&menuItems](int index) { return menuItems[index].icon; });
         }

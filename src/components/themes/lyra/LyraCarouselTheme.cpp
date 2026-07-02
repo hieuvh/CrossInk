@@ -492,11 +492,11 @@ void LyraCarouselTheme::drawButtonMenuSelectionOverlay(const GfxRenderer& render
   // label here as part of the overlay; without this, navigating into the
   // button menu row leaves the label area empty.
   if (buttonLabel != nullptr) {
-    renderer.fillRect(metrics.tileX, metrics.labelY, metrics.bandWidth, metrics.labelLineHeight, false);
+    renderer.fillRect(metrics.tileX, metrics.labelY - 6, metrics.bandWidth, metrics.labelLineHeight, false);
     const std::string labelStr = buttonLabel(selectedIndex);
     const auto centeredLabel = renderer.truncatedText(kMenuLabelFontId, labelStr.c_str(), metrics.bandWidth - 40);
     const int labelWidth = renderer.getTextWidth(kMenuLabelFontId, centeredLabel.c_str(), EpdFontFamily::REGULAR);
-    renderer.drawText(kMenuLabelFontId, metrics.tileX + (metrics.bandWidth - labelWidth) / 2, metrics.labelY + 2,
+    renderer.drawText(kMenuLabelFontId, metrics.tileX + (metrics.bandWidth - labelWidth) / 2, metrics.labelY,
                       centeredLabel.c_str(), true, EpdFontFamily::REGULAR);
   }
 }

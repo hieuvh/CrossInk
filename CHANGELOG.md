@@ -22,6 +22,7 @@
 - Restored bold weight on Lyra section headers in Settings now that the Vietnamese first-character glyph bug is no longer relevant.
 
 ### Fixed
+- Fixed home screen menu item label text jumping and smearing (vertical misalignment of clearing and text y-coordinates in Lyra Carousel overlay rendering).
 - Fixed intermittent crash when opening a book from the Lyra Carousel home screen (race condition between the main task freeing carousel frame buffers and the render task reading them).
 - Fixed Lyra Carousel theme showing a solid black square instead of an icon for selected items in lists that use subtitle rows (e.g. Recent Books), for icons that only have 24px variants.
 - Fixed selected button icons appearing as a solid black square instead of a white icon on black during font cache scan passes.
