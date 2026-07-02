@@ -3,6 +3,10 @@
 ## [Unreleased]
 
 ### Added
+- Added device-adaptive dithering profiles for X3 and X4 displays to optimize contrast and gray level separation.
+- Added an in-place 1D horizontal unsharp-mask image sharpening pre-pass (Off, Subtle, Strong) for cover images.
+- Added post-refresh grayscale anti-aliasing to Home and Settings UI to smooth text and borders.
+- Added windowed partial updates for settings screen selection changes on X4 to make row highlights feel instant and fluid.
 - Added a header clock on the Home screen, with a new **Time** section in Settings → System (24-hour or 12-hour format, UTC offset from −12 to +14).
 - Added cold-boot NTP time sync on X4 (uses the last-connected Wi-Fi, runs once, then disconnects).
 - Added DS3231 hardware RTC support on X3 (read and write).
@@ -12,6 +16,7 @@
 - Switched the UI font from Inter to **Quicksand SemiBold** (Regular slot) + **Quicksand Bold** (Bold slot) so labels and headers carry more weight on the e-ink panel.
 
 ### Changed
+- Refactored EPUB/TXT Reader anti-aliasing to use a post-AA re-render pass, eliminating the 48 KB static backup buffer to save precious heap space and improve stability.
 - Reader page turns now skip the grayscale anti-aliasing "upgrade" pass when another page turn is already queued — rapid skimming stays snappy, and the AA refresh only runs once you stop on a page.
 - Tightened menu navigation timings: button polling cadence is now 5 ms (was 10 ms), hold-to-scroll engages at 300 ms (was 500 ms), and continuous nav advances every 250 ms (was 500 ms) — long settings/file-browser lists feel noticeably more responsive.
 - Restored bold weight on Lyra section headers in Settings now that the Vietnamese first-character glyph bug is no longer relevant.
