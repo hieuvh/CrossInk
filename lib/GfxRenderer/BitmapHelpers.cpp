@@ -2,8 +2,27 @@
 
 #include <cstdint>
 #include <cstring>  // Added for memset
+#include <HalGPIO.h>
 
 #include "Bitmap.h"
+
+const DitherProfile kDitherProfileX4 = {
+  {30, 50, 140},
+  {15, 30, 80, 210}
+};
+
+const DitherProfile kDitherProfileX3 = {
+  {40, 80, 160},
+  {20, 55, 120, 220}
+};
+
+const DitherProfile& getDeviceDitherProfile() {
+#ifdef SIMULATOR
+  return kDitherProfileX4;
+#else
+  return gpio.deviceIsX3() ? kDitherProfileX3 : kDitherProfileX4;
+#endif
+}
 
 // Brightness/Contrast adjustments:
 constexpr bool USE_BRIGHTNESS = false;       // true: apply brightness/gamma adjustments

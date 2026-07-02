@@ -517,10 +517,11 @@ bool JpegToBmpConverter::jpegFileToBmpStreamInternal(FsFile& jpegFile, Print& bm
   if (oneBit) {
     ctx.atkinson1BitDitherer = new (std::nothrow) Atkinson1BitDitherer(outWidth);
   } else if (!USE_8BIT_OUTPUT) {
+    const auto& profile = getDeviceDitherProfile();
     if (USE_ATKINSON) {
-      ctx.atkinsonDitherer = new (std::nothrow) AtkinsonDitherer(outWidth);
+      ctx.atkinsonDitherer = new (std::nothrow) AtkinsonDitherer(outWidth, profile);
     } else if (USE_FLOYD_STEINBERG) {
-      ctx.fsDitherer = new (std::nothrow) FloydSteinbergDitherer(outWidth);
+      ctx.fsDitherer = new (std::nothrow) FloydSteinbergDitherer(outWidth, profile);
     }
   }
 

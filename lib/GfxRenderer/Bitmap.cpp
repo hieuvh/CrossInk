@@ -167,10 +167,11 @@ BmpReaderError Bitmap::parseHeaders() {
   //  - High-color + dithering disabled → simple quantization (no error diffusion)
   const bool highColor = !nativePalette;
   if (highColor && dithering) {
+    const auto& profile = getDeviceDitherProfile();
     if (USE_ATKINSON) {
-      atkinsonDitherer = new AtkinsonDitherer(width);
+      atkinsonDitherer = new AtkinsonDitherer(width, profile);
     } else {
-      fsDitherer = new FloydSteinbergDitherer(width);
+      fsDitherer = new FloydSteinbergDitherer(width, profile);
     }
   }
 

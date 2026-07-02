@@ -5,6 +5,16 @@
 
 struct BmpHeader;
 
+struct DitherProfile {
+  int thresholds[3];
+  int quantizedValues[4];
+};
+
+extern const DitherProfile kDitherProfileX4;
+extern const DitherProfile kDitherProfileX3;
+
+const DitherProfile& getDeviceDitherProfile();
+
 // Helper functions
 uint8_t quantize(int gray, int x, int y);
 uint8_t quantizeSimple(int gray);
@@ -104,7 +114,8 @@ class Atkinson1BitDitherer {
 // Less error buildup = fewer artifacts than Floyd-Steinberg
 class AtkinsonDitherer {
  public:
-  explicit AtkinsonDitherer(int width) : width(width) {
+  explicit AtkinsonDitherer(int width, const DitherProfile& profile = kDitherProfileX4)
+      : width(width), profile(profile) {
     errorRow0 = new int16_t[width + 4]();  // Current row
     errorRow1 = new int16_t[width + 4]();  // Next row
     errorRow2 = new int16_t[width + 4]();  // Row after next
@@ -127,37 +138,21 @@ class AtkinsonDitherer {
     if (adjusted < 0) adjusted = 0;
     if (adjusted > 255) adjusted = 255;
 
-    // Quantize to 4 levels
+    // Quantize to 4 levels using profile
     uint8_t quantized;
     int quantizedValue;
-    if (false) {  // original thresholds
-      if (adjusted < 43) {
-        quantized = 0;
-        quantizedValue = 0;
-      } else if (adjusted < 128) {
-        quantized = 1;
-        quantizedValue = 85;
-      } else if (adjusted < 213) {
-        quantized = 2;
-        quantizedValue = 170;
-      } else {
-        quantized = 3;
-        quantizedValue = 255;
-      }
-    } else {  // fine-tuned to X4 eink display
-      if (adjusted < 30) {
-        quantized = 0;
-        quantizedValue = 15;
-      } else if (adjusted < 50) {
-        quantized = 1;
-        quantizedValue = 30;
-      } else if (adjusted < 140) {
-        quantized = 2;
-        quantizedValue = 80;
-      } else {
-        quantized = 3;
-        quantizedValue = 210;
-      }
+    if (adjusted < profile.thresholds[0]) {
+      quantized = 0;
+      quantizedValue = profile.quantizedValues[0];
+    } else if (adjusted < profile.thresholds[1]) {
+      quantized = 1;
+      quantizedValue = profile.quantizedValues[1];
+    } else if (adjusted < profile.thresholds[2]) {
+      quantized = 2;
+      quantizedValue = profile.quantizedValues[2];
+    } else {
+      quantized = 3;
+      quantizedValue = profile.quantizedValues[3];
     }
 
     // Calculate error (only distribute 6/8 = 75%)
@@ -190,6 +185,7 @@ class AtkinsonDitherer {
 
  private:
   int width;
+  const DitherProfile& profile;
   int16_t* errorRow0;
   int16_t* errorRow1;
   int16_t* errorRow2;
@@ -205,7 +201,8 @@ class AtkinsonDitherer {
 //      7/16  X
 class FloydSteinbergDitherer {
  public:
-  explicit FloydSteinbergDitherer(int width) : width(width), rowCount(0) {
+  explicit FloydSteinbergDitherer(int width, const DitherProfile& profile = kDitherProfileX4)
+      : width(width), profile(profile), rowCount(0) {
     errorCurRow = new int16_t[width + 2]();  // +2 for boundary handling
     errorNextRow = new int16_t[width + 2]();
   }
@@ -231,37 +228,21 @@ class FloydSteinbergDitherer {
     if (adjusted < 0) adjusted = 0;
     if (adjusted > 255) adjusted = 255;
 
-    // Quantize to 4 levels (0, 85, 170, 255)
+    // Quantize to 4 levels using profile
     uint8_t quantized;
     int quantizedValue;
-    if (false) {  // original thresholds
-      if (adjusted < 43) {
-        quantized = 0;
-        quantizedValue = 0;
-      } else if (adjusted < 128) {
-        quantized = 1;
-        quantizedValue = 85;
-      } else if (adjusted < 213) {
-        quantized = 2;
-        quantizedValue = 170;
-      } else {
-        quantized = 3;
-        quantizedValue = 255;
-      }
-    } else {  // fine-tuned to X4 eink display
-      if (adjusted < 30) {
-        quantized = 0;
-        quantizedValue = 15;
-      } else if (adjusted < 50) {
-        quantized = 1;
-        quantizedValue = 30;
-      } else if (adjusted < 140) {
-        quantized = 2;
-        quantizedValue = 80;
-      } else {
-        quantized = 3;
-        quantizedValue = 210;
-      }
+    if (adjusted < profile.thresholds[0]) {
+      quantized = 0;
+      quantizedValue = profile.quantizedValues[0];
+    } else if (adjusted < profile.thresholds[1]) {
+      quantized = 1;
+      quantizedValue = profile.quantizedValues[1];
+    } else if (adjusted < profile.thresholds[2]) {
+      quantized = 2;
+      quantizedValue = profile.quantizedValues[2];
+    } else {
+      quantized = 3;
+      quantizedValue = profile.quantizedValues[3];
     }
 
     // Calculate error
@@ -316,6 +297,7 @@ class FloydSteinbergDitherer {
 
  private:
   int width;
+  const DitherProfile& profile;
   int rowCount;
   int16_t* errorCurRow;
   int16_t* errorNextRow;

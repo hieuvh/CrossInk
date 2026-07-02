@@ -627,10 +627,11 @@ bool PngToBmpConverter::pngFileToBmpStreamInternal(FsFile& pngFile, Print& bmpOu
   if (oneBit) {
     atkinson1BitDitherer = new Atkinson1BitDitherer(outWidth);
   } else if (!USE_8BIT_OUTPUT) {
+    const auto& profile = getDeviceDitherProfile();
     if (USE_ATKINSON) {
-      atkinsonDitherer = new AtkinsonDitherer(outWidth);
+      atkinsonDitherer = new AtkinsonDitherer(outWidth, profile);
     } else if (USE_FLOYD_STEINBERG) {
-      fsDitherer = new FloydSteinbergDitherer(outWidth);
+      fsDitherer = new FloydSteinbergDitherer(outWidth, profile);
     }
   }
 
