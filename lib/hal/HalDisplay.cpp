@@ -57,6 +57,16 @@ EInkDisplay::RefreshMode convertRefreshMode(HalDisplay::RefreshMode mode) {
 void HalDisplay::displayBuffer(HalDisplay::RefreshMode mode, bool turnOffScreen) {
   HalSpiBus::Lock spiLock;
 
+  if (mode == RefreshMode::FAST_REFRESH) {
+    consecutiveFastRefreshes++;
+    if (consecutiveFastRefreshes >= 8) {
+      mode = RefreshMode::HALF_REFRESH;
+      consecutiveFastRefreshes = 0;
+    }
+  } else {
+    consecutiveFastRefreshes = 0;
+  }
+
   if (gpio.deviceIsX3() && mode == RefreshMode::HALF_REFRESH) {
     einkDisplay.requestResync(1);
   }
@@ -65,8 +75,13 @@ void HalDisplay::displayBuffer(HalDisplay::RefreshMode mode, bool turnOffScreen)
 }
 
 void HalDisplay::displayWindow(uint16_t x, uint16_t y, uint16_t w, uint16_t h, bool turnOffScreen) {
-  HalSpiBus::Lock spiLock;
-  einkDisplay.displayWindow(x, y, w, h, turnOffScreen);
+  consecutiveFastRefreshes++;
+  if (consecutiveFastRefreshes >= 8) {
+    displayBuffer(RefreshMode::HALF_REFRESH, turnOffScreen);
+  } else {
+    HalSpiBus::Lock spiLock;
+    einkDisplay.displayWindow(x, y, w, h, turnOffScreen);
+  }
 }
 
 void HalDisplay::refreshDisplay(HalDisplay::RefreshMode mode, bool turnOffScreen) {
@@ -98,6 +113,7 @@ void HalDisplay::cleanupGrayscaleBuffers(const uint8_t* bwBuffer) { einkDisplay.
 
 void HalDisplay::displayGrayBuffer(bool turnOffScreen) {
   HalSpiBus::Lock spiLock;
+  consecutiveFastRefreshes = 0;
   einkDisplay.displayGrayBuffer(turnOffScreen);
 }
 

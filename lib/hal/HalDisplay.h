@@ -58,6 +58,7 @@ class HalDisplay {
 
  private:
   EInkDisplay einkDisplay;
+  int consecutiveFastRefreshes = 0;
 };
 
 extern HalDisplay display;
