@@ -513,10 +513,9 @@ void SettingsActivity::render(RenderLock&&) {
     renderer.displayWindow(0, yMin, pageWidth, yHeight);
   } else {
     renderer.displayBuffer();
-  }
-
-  if (SETTINGS.textAntiAliasing) {
-    UIRenderUtils::renderUIAntiAliased(renderer, drawSettingsContent);
+    if (SETTINGS.textAntiAliasing) {
+      UIRenderUtils::renderUIAntiAliased(renderer, drawSettingsContent);
+    }
   }
 
   previousCategoryIndex = selectedCategoryIndex;
