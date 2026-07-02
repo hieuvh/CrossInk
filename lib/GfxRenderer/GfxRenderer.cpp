@@ -1091,9 +1091,62 @@ void GfxRenderer::drawIcon(const uint8_t bitmap[], const int x, const int y, con
   display.drawImageTransparent(bitmap, y, getScreenWidth() - width - x, height, width);
 }
 
+void GfxRenderer::drawIconDirect(const uint8_t bitmap[], const int x, const int y, const int width,
+                                  const int height) const {
+  // Pixel-accurate version of drawIcon. drawIcon delegates to drawImageTransparent which
+  // truncates physX to a byte boundary, shifting the icon by up to 7px. This function uses
+  // the same bit-shift logic as drawIconInverted so the icon lands at the exact pixel position,
+  // matching drawRoundedRect/drawPixel coordinate accuracy.
+  const int physX = y;
+  const int physY = getScreenWidth() - width - x;
+  const int imgW = height;
+  const int imgH = width;
+  const int srcStride = (imgW + 7) / 8;
+
+  if (physX + imgW <= 0 || physX >= panelWidth) return;
+  if (physY + imgH <= 0 || physY >= panelHeight) return;
+
+  const int baseByte = (physX >= 0) ? (physX >> 3) : -(((-physX) + 7) >> 3);
+  const int bitShift = ((physX % 8) + 8) % 8;
+
+  for (int row = 0; row < imgH; ++row) {
+    const int destY = physY + row;
+    if (destY < 0 || destY >= panelHeight) continue;
+    const int rowBase = destY * panelWidthBytes;
+    const int srcOffset = row * srcStride;
+
+    if (bitShift == 0) {
+      for (int col = 0; col < srcStride; ++col) {
+        const int dst = baseByte + col;
+        if (dst < 0) continue;
+        if (dst >= panelWidthBytes) break;
+        frameBuffer[rowBase + dst] &= bitmap[srcOffset + col];
+      }
+    } else {
+      const int rsh = bitShift;
+      const int lsh = 8 - bitShift;
+      for (int col = 0; col < srcStride; ++col) {
+        const uint8_t src = bitmap[srcOffset + col];
+        const int dstHi = baseByte + col;
+        const int dstLo = dstHi + 1;
+        // Shift the mask: bits that are NOT shifted in stay 1 (transparent), so OR the inverse shift.
+        if (dstHi >= 0 && dstHi < panelWidthBytes) {
+          frameBuffer[rowBase + dstHi] &= static_cast<uint8_t>((src >> rsh) | (0xFF << lsh));
+        }
+        if (dstLo >= 0 && dstLo < panelWidthBytes) {
+          frameBuffer[rowBase + dstLo] &= static_cast<uint8_t>((src << lsh) | (0xFF >> rsh));
+        }
+      }
+    }
+  }
+}
+
 void GfxRenderer::drawIconInverted(const uint8_t bitmap[], const int x, const int y, const int width,
                                    const int height) const {
-  if (fontCacheManager_ && fontCacheManager_->isScanning()) return;
+  // No fontCacheManager/isScanning guard here: icon bitmaps are flash-resident
+  // constants, not glyphs or SD bitmaps. fillRoundedRect (called just before
+  // this) also has no guard, so skipping only the icon leaves a solid-black
+  // selection highlight with no white icon during scan passes.
 
   // Portrait-mode coordinate transform (x↔y swap), matching drawIcon.
   // OR with ~srcByte sets framebuffer bits to 1 (white) wherever the icon
@@ -1105,8 +1158,8 @@ void GfxRenderer::drawIconInverted(const uint8_t bitmap[], const int x, const in
   const int srcStride = (imgW + 7) / 8;  // round up so non-byte-aligned widths copy fully
 
   // Trivial off-screen rejection.
-  if (physX + imgW <= 0 || physX >= HalDisplay::DISPLAY_WIDTH) return;
-  if (physY + imgH <= 0 || physY >= HalDisplay::DISPLAY_HEIGHT) return;
+  if (physX + imgW <= 0 || physX >= panelWidth) return;
+  if (physY + imgH <= 0 || physY >= panelHeight) return;
 
   // Floor-divide so a negative physX produces the correct (negative) base byte;
   // C++ integer division truncates toward zero, which would round up for negatives.
@@ -1122,15 +1175,15 @@ void GfxRenderer::drawIconInverted(const uint8_t bitmap[], const int x, const in
 
   for (int row = 0; row < imgH; ++row) {
     const int destY = physY + row;
-    if (destY < 0 || destY >= HalDisplay::DISPLAY_HEIGHT) continue;
-    const int rowBase = destY * HalDisplay::DISPLAY_WIDTH_BYTES;
+    if (destY < 0 || destY >= panelHeight) continue;
+    const int rowBase = destY * panelWidthBytes;
     const int srcOffset = row * srcStride;
 
     if (bitShift == 0) {
       for (int col = 0; col < srcStride; ++col) {
         const int dst = baseByte + col;
         if (dst < 0) continue;
-        if (dst >= HalDisplay::DISPLAY_WIDTH_BYTES) break;
+        if (dst >= panelWidthBytes) break;
         uint8_t inv = ~bitmap[srcOffset + col];
         if (col == lastCol && trail > 0) inv &= trailMask;
         frameBuffer[rowBase + dst] |= inv;
@@ -1143,10 +1196,10 @@ void GfxRenderer::drawIconInverted(const uint8_t bitmap[], const int x, const in
         if (col == lastCol && trail > 0) inv &= trailMask;
         const int dstHi = baseByte + col;
         const int dstLo = dstHi + 1;
-        if (dstHi >= 0 && dstHi < HalDisplay::DISPLAY_WIDTH_BYTES) {
+        if (dstHi >= 0 && dstHi < panelWidthBytes) {
           frameBuffer[rowBase + dstHi] |= static_cast<uint8_t>(inv >> rsh);
         }
-        if (dstLo >= 0 && dstLo < HalDisplay::DISPLAY_WIDTH_BYTES) {
+        if (dstLo >= 0 && dstLo < panelWidthBytes) {
           frameBuffer[rowBase + dstLo] |= static_cast<uint8_t>(inv << lsh);
         }
       }

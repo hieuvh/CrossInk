@@ -27,6 +27,7 @@
 #include "OpdsServerStore.h"
 #include "RecentBooksStore.h"
 #include "SdCardFontSystem.h"
+#include "WifiCredentialStore.h"
 #include "activities/Activity.h"
 #include "activities/ActivityManager.h"
 #include "activities/reader/KOReaderSyncActivity.h"
@@ -34,6 +35,7 @@
 #include "activities/settings/SdFirmwareUpdateActivity.h"
 #include "components/UITheme.h"
 #include "fontIds.h"
+#include "services/TimeService.h"
 #ifdef SIMULATOR
 #include "simulator/SimulatorSmokeTest.h"
 #endif
@@ -54,65 +56,6 @@ EpdFont lexenddeca14ItalicFont(&lexenddeca_14_italic);
 EpdFont lexenddeca14BoldItalicFont(&lexenddeca_14_bolditalic);
 EpdFontFamily lexenddeca14FontFamily(&lexenddeca14RegularFont, &lexenddeca14BoldFont, &lexenddeca14ItalicFont,
                                      &lexenddeca14BoldItalicFont);
-#ifndef OMIT_TEENSY_FONT
-EpdFont charein8RegularFont(&charein_8_regular);
-EpdFont charein8BoldFont(&charein_8_bold);
-EpdFont charein8ItalicFont(&charein_8_italic);
-EpdFont charein8BoldItalicFont(&charein_8_bolditalic);
-EpdFontFamily charein8FontFamily(&charein8RegularFont, &charein8BoldFont, &charein8ItalicFont, &charein8BoldItalicFont);
-#endif
-#ifndef OMIT_TINY_FONT
-EpdFont charein10RegularFont(&charein_10_regular);
-EpdFont charein10BoldFont(&charein_10_bold);
-EpdFont charein10ItalicFont(&charein_10_italic);
-EpdFont charein10BoldItalicFont(&charein_10_bolditalic);
-EpdFontFamily charein10FontFamily(&charein10RegularFont, &charein10BoldFont, &charein10ItalicFont,
-                                  &charein10BoldItalicFont);
-#endif
-#ifndef OMIT_SMALL_FONT
-EpdFont charein12RegularFont(&charein_12_regular);
-EpdFont charein12BoldFont(&charein_12_bold);
-EpdFont charein12ItalicFont(&charein_12_italic);
-EpdFont charein12BoldItalicFont(&charein_12_bolditalic);
-EpdFontFamily charein12FontFamily(&charein12RegularFont, &charein12BoldFont, &charein12ItalicFont,
-                                  &charein12BoldItalicFont);
-#endif
-EpdFont charein14RegularFont(&charein_14_regular);
-EpdFont charein14BoldFont(&charein_14_bold);
-EpdFont charein14ItalicFont(&charein_14_italic);
-EpdFont charein14BoldItalicFont(&charein_14_bolditalic);
-EpdFontFamily charein14FontFamily(&charein14RegularFont, &charein14BoldFont, &charein14ItalicFont,
-                                  &charein14BoldItalicFont);
-EpdFont charein16RegularFont(&charein_16_regular);
-EpdFont charein16BoldFont(&charein_16_bold);
-EpdFont charein16ItalicFont(&charein_16_italic);
-EpdFont charein16BoldItalicFont(&charein_16_bolditalic);
-EpdFontFamily charein16FontFamily(&charein16RegularFont, &charein16BoldFont, &charein16ItalicFont,
-                                  &charein16BoldItalicFont);
-#ifndef OMIT_XLARGE_FONT
-EpdFont charein18RegularFont(&charein_18_regular);
-EpdFont charein18BoldFont(&charein_18_bold);
-EpdFont charein18ItalicFont(&charein_18_italic);
-EpdFont charein18BoldItalicFont(&charein_18_bolditalic);
-EpdFontFamily charein18FontFamily(&charein18RegularFont, &charein18BoldFont, &charein18ItalicFont,
-                                  &charein18BoldItalicFont);
-#endif
-#ifndef OMIT_HUGE_FONT
-EpdFont charein20RegularFont(&charein_20_regular);
-EpdFont charein20BoldFont(&charein_20_bold);
-EpdFont charein20ItalicFont(&charein_20_italic);
-EpdFont charein20BoldItalicFont(&charein_20_bolditalic);
-EpdFontFamily charein20FontFamily(&charein20RegularFont, &charein20BoldFont, &charein20ItalicFont,
-                                  &charein20BoldItalicFont);
-#endif
-#ifndef OMIT_TEENSY_FONT
-EpdFont lexenddeca8RegularFont(&lexenddeca_8_regular);
-EpdFont lexenddeca8BoldFont(&lexenddeca_8_bold);
-EpdFont lexenddeca8ItalicFont(&lexenddeca_8_italic);
-EpdFont lexenddeca8BoldItalicFont(&lexenddeca_8_bolditalic);
-EpdFontFamily lexenddeca8FontFamily(&lexenddeca8RegularFont, &lexenddeca8BoldFont, &lexenddeca8ItalicFont,
-                                    &lexenddeca8BoldItalicFont);
-#endif
 #ifndef OMIT_TINY_FONT
 EpdFont lexenddeca10RegularFont(&lexenddeca_10_regular);
 EpdFont lexenddeca10BoldFont(&lexenddeca_10_bold);
@@ -135,30 +78,7 @@ EpdFont lexenddeca16ItalicFont(&lexenddeca_16_italic);
 EpdFont lexenddeca16BoldItalicFont(&lexenddeca_16_bolditalic);
 EpdFontFamily lexenddeca16FontFamily(&lexenddeca16RegularFont, &lexenddeca16BoldFont, &lexenddeca16ItalicFont,
                                      &lexenddeca16BoldItalicFont);
-#ifndef OMIT_XLARGE_FONT
-EpdFont lexenddeca18RegularFont(&lexenddeca_18_regular);
-EpdFont lexenddeca18BoldFont(&lexenddeca_18_bold);
-EpdFont lexenddeca18ItalicFont(&lexenddeca_18_italic);
-EpdFont lexenddeca18BoldItalicFont(&lexenddeca_18_bolditalic);
-EpdFontFamily lexenddeca18FontFamily(&lexenddeca18RegularFont, &lexenddeca18BoldFont, &lexenddeca18ItalicFont,
-                                     &lexenddeca18BoldItalicFont);
-#endif
-#ifndef OMIT_HUGE_FONT
-EpdFont lexenddeca20RegularFont(&lexenddeca_20_regular);
-EpdFont lexenddeca20BoldFont(&lexenddeca_20_bold);
-EpdFont lexenddeca20ItalicFont(&lexenddeca_20_italic);
-EpdFont lexenddeca20BoldItalicFont(&lexenddeca_20_bolditalic);
-EpdFontFamily lexenddeca20FontFamily(&lexenddeca20RegularFont, &lexenddeca20BoldFont, &lexenddeca20ItalicFont,
-                                     &lexenddeca20BoldItalicFont);
-#endif
 
-#ifndef OMIT_TEENSY_FONT
-EpdFont bitter8RegularFont(&bitter_8_regular);
-EpdFont bitter8BoldFont(&bitter_8_bold);
-EpdFont bitter8ItalicFont(&bitter_8_italic);
-EpdFont bitter8BoldItalicFont(&bitter_8_bolditalic);
-EpdFontFamily bitter8FontFamily(&bitter8RegularFont, &bitter8BoldFont, &bitter8ItalicFont, &bitter8BoldItalicFont);
-#endif
 #ifndef OMIT_TINY_FONT
 EpdFont bitter10RegularFont(&bitter_10_regular);
 EpdFont bitter10BoldFont(&bitter_10_bold);
@@ -183,30 +103,45 @@ EpdFont bitter16BoldFont(&bitter_16_bold);
 EpdFont bitter16ItalicFont(&bitter_16_italic);
 EpdFont bitter16BoldItalicFont(&bitter_16_bolditalic);
 EpdFontFamily bitter16FontFamily(&bitter16RegularFont, &bitter16BoldFont, &bitter16ItalicFont, &bitter16BoldItalicFont);
-#ifndef OMIT_XLARGE_FONT
-EpdFont bitter18RegularFont(&bitter_18_regular);
-EpdFont bitter18BoldFont(&bitter_18_bold);
-EpdFont bitter18ItalicFont(&bitter_18_italic);
-EpdFont bitter18BoldItalicFont(&bitter_18_bolditalic);
-EpdFontFamily bitter18FontFamily(&bitter18RegularFont, &bitter18BoldFont, &bitter18ItalicFont, &bitter18BoldItalicFont);
-#endif
-#ifndef OMIT_HUGE_FONT
-EpdFont bitter20RegularFont(&bitter_20_regular);
-EpdFont bitter20BoldFont(&bitter_20_bold);
-EpdFont bitter20ItalicFont(&bitter_20_italic);
-EpdFont bitter20BoldItalicFont(&bitter_20_bolditalic);
-EpdFontFamily bitter20FontFamily(&bitter20RegularFont, &bitter20BoldFont, &bitter20ItalicFont, &bitter20BoldItalicFont);
-#endif
 
-EpdFont smallFont(&inter_8_regular);
+#ifndef OMIT_TINY_FONT
+EpdFont quicksand10RegularFont(&quicksand_10_regular);
+EpdFont quicksand10BoldFont(&quicksand_10_bold);
+EpdFont quicksand10ItalicFont(&quicksand_10_italic);
+EpdFont quicksand10BoldItalicFont(&quicksand_10_bolditalic);
+EpdFontFamily quicksand10FontFamily(&quicksand10RegularFont, &quicksand10BoldFont, &quicksand10ItalicFont,
+                                    &quicksand10BoldItalicFont);
+#endif
+#ifndef OMIT_SMALL_FONT
+EpdFont quicksand12RegularFont(&quicksand_12_regular);
+EpdFont quicksand12BoldFont(&quicksand_12_bold);
+EpdFont quicksand12ItalicFont(&quicksand_12_italic);
+EpdFont quicksand12BoldItalicFont(&quicksand_12_bolditalic);
+EpdFontFamily quicksand12FontFamily(&quicksand12RegularFont, &quicksand12BoldFont, &quicksand12ItalicFont,
+                                    &quicksand12BoldItalicFont);
+#endif
+EpdFont quicksand14RegularFont(&quicksand_14_regular);
+EpdFont quicksand14BoldFont(&quicksand_14_bold);
+EpdFont quicksand14ItalicFont(&quicksand_14_italic);
+EpdFont quicksand14BoldItalicFont(&quicksand_14_bolditalic);
+EpdFontFamily quicksand14FontFamily(&quicksand14RegularFont, &quicksand14BoldFont, &quicksand14ItalicFont,
+                                    &quicksand14BoldItalicFont);
+EpdFont quicksand16RegularFont(&quicksand_16_regular);
+EpdFont quicksand16BoldFont(&quicksand_16_bold);
+EpdFont quicksand16ItalicFont(&quicksand_16_italic);
+EpdFont quicksand16BoldItalicFont(&quicksand_16_bolditalic);
+EpdFontFamily quicksand16FontFamily(&quicksand16RegularFont, &quicksand16BoldFont, &quicksand16ItalicFont,
+                                    &quicksand16BoldItalicFont);
+
+EpdFont smallFont(&quicksand_sb_8_regular);
 EpdFontFamily smallFontFamily(&smallFont);
 
-EpdFont ui10RegularFont(&inter_10_regular);
-EpdFont ui10BoldFont(&inter_10_bold);
+EpdFont ui10RegularFont(&quicksand_sb_10_regular);
+EpdFont ui10BoldFont(&quicksand_sb_10_bold);
 EpdFontFamily ui10FontFamily(&ui10RegularFont, &ui10BoldFont);
 
-EpdFont ui12RegularFont(&inter_12_regular);
-EpdFont ui12BoldFont(&inter_12_bold);
+EpdFont ui12RegularFont(&quicksand_sb_12_regular);
+EpdFont ui12BoldFont(&quicksand_sb_12_bold);
 EpdFontFamily ui12FontFamily(&ui12RegularFont, &ui12BoldFont);
 
 // measurement of power button press duration calibration value
@@ -434,27 +369,6 @@ void setupDisplayAndFonts() {
   fontCacheManager.setFontDecompressor(&fontDecompressor);
   renderer.setFontCacheManager(&fontCacheManager);
 
-#ifndef OMIT_TEENSY_FONT
-  renderer.insertFont(CHAREINK_8_FONT_ID, charein8FontFamily);
-#endif
-#ifndef OMIT_TINY_FONT
-  renderer.insertFont(CHAREINK_10_FONT_ID, charein10FontFamily);
-#endif
-#ifndef OMIT_SMALL_FONT
-  renderer.insertFont(CHAREINK_12_FONT_ID, charein12FontFamily);
-#endif
-  renderer.insertFont(CHAREINK_14_FONT_ID, charein14FontFamily);
-  renderer.insertFont(CHAREINK_16_FONT_ID, charein16FontFamily);
-#ifndef OMIT_XLARGE_FONT
-  renderer.insertFont(CHAREINK_18_FONT_ID, charein18FontFamily);
-#endif
-#ifndef OMIT_HUGE_FONT
-  renderer.insertFont(CHAREINK_20_FONT_ID, charein20FontFamily);
-#endif
-
-#ifndef OMIT_TEENSY_FONT
-  renderer.insertFont(LEXENDDECA_8_FONT_ID, lexenddeca8FontFamily);
-#endif
 #ifndef OMIT_TINY_FONT
   renderer.insertFont(LEXENDDECA_10_FONT_ID, lexenddeca10FontFamily);
 #endif
@@ -463,16 +377,7 @@ void setupDisplayAndFonts() {
 #endif
   renderer.insertFont(LEXENDDECA_14_FONT_ID, lexenddeca14FontFamily);
   renderer.insertFont(LEXENDDECA_16_FONT_ID, lexenddeca16FontFamily);
-#ifndef OMIT_XLARGE_FONT
-  renderer.insertFont(LEXENDDECA_18_FONT_ID, lexenddeca18FontFamily);
-#endif
-#ifndef OMIT_HUGE_FONT
-  renderer.insertFont(LEXENDDECA_20_FONT_ID, lexenddeca20FontFamily);
-#endif
 
-#ifndef OMIT_TEENSY_FONT
-  renderer.insertFont(BITTER_8_FONT_ID, bitter8FontFamily);
-#endif
 #ifndef OMIT_TINY_FONT
   renderer.insertFont(BITTER_10_FONT_ID, bitter10FontFamily);
 #endif
@@ -481,12 +386,16 @@ void setupDisplayAndFonts() {
 #endif
   renderer.insertFont(BITTER_14_FONT_ID, bitter14FontFamily);
   renderer.insertFont(BITTER_16_FONT_ID, bitter16FontFamily);
-#ifndef OMIT_XLARGE_FONT
-  renderer.insertFont(BITTER_18_FONT_ID, bitter18FontFamily);
+
+#ifndef OMIT_TINY_FONT
+  renderer.insertFont(QUICKSAND_10_FONT_ID, quicksand10FontFamily);
 #endif
-#ifndef OMIT_HUGE_FONT
-  renderer.insertFont(BITTER_20_FONT_ID, bitter20FontFamily);
+#ifndef OMIT_SMALL_FONT
+  renderer.insertFont(QUICKSAND_12_FONT_ID, quicksand12FontFamily);
 #endif
+  renderer.insertFont(QUICKSAND_14_FONT_ID, quicksand14FontFamily);
+  renderer.insertFont(QUICKSAND_16_FONT_ID, quicksand16FontFamily);
+
   renderer.insertFont(UI_10_FONT_ID, ui10FontFamily);
   renderer.insertFont(UI_12_FONT_ID, ui12FontFamily);
   renderer.insertFont(SMALL_FONT_ID, smallFontFamily);
@@ -582,6 +491,16 @@ void setup() {
 
   APP_STATE.loadFromFile();
   RECENT_BOOKS.loadFromFile();
+
+  // Load saved Wi-Fi credentials so the cold-boot NTP task (X4) and the
+  // "Sync time now" action can find them. Previously this only happened
+  // lazily inside WifiSelectionActivity::onEnter, so users who never opened
+  // the Wi-Fi screen this session would get a spurious "No saved Wi-Fi"
+  // error from Sync time now.
+  WIFI_STORE.loadFromFile();
+
+  TimeService::instance().boot(gpio.deviceIsX3() ? TimeService::DeviceType::X3
+                                                 : TimeService::DeviceType::X4);
 
   if (recoveryFirmwareMode) {
     // Skip normal home/reader routing: jump straight into the SD firmware picker.
@@ -734,8 +653,11 @@ void loop() {
       powerManager.setPowerSaving(true);  // Lower CPU frequency after extended inactivity
       delay(50);
     } else {
-      // Short delay to prevent tight loop while still being responsive
-      delay(10);
+      // Short delay to prevent tight loop while still being responsive.
+      // 5ms = 200Hz button polling cadence — halves worst-case press-to-react
+      // latency vs the previous 10ms without measurably affecting power draw
+      // while active.
+      delay(5);
     }
   }
 }

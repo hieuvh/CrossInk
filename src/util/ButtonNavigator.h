@@ -17,7 +17,12 @@ class ButtonNavigator final {
   [[nodiscard]] bool shouldNavigateContinuously() const;
 
  public:
-  explicit ButtonNavigator(const uint16_t continuousIntervalMs = 500, const uint16_t continuousStartMs = 500)
+  // Defaults tuned for snappier menu navigation:
+  //   continuousStartMs = 300: button needs to be held this long before the
+  //     hold-to-scroll loop engages (was 500ms — felt sluggish on long lists).
+  //   continuousIntervalMs = 250: how often the continuous nav advances while
+  //     held (was 500ms = 2 steps/sec, now ~4 steps/sec).
+  explicit ButtonNavigator(const uint16_t continuousIntervalMs = 250, const uint16_t continuousStartMs = 300)
       : continuousStartMs(continuousStartMs), continuousIntervalMs(continuousIntervalMs) {}
 
   static void setMappedInputManager(const MappedInputManager& mappedInputManager) { mappedInput = &mappedInputManager; }

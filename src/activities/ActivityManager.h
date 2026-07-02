@@ -73,6 +73,19 @@ class ActivityManager {
   // This variable must only be set by the main loop, to avoid race conditions
   bool requestedUpdate = false;
 
+  // Set by requestUpdate() on either task; cleared at the start of each render pass.
+  // Allows long-running work inside render() to abort early when a new render is queued.
+  volatile bool renderPending_ = false;
+
+  // Live header-clock refresh state. Polled at most once per second in loop()
+  // and only when the current activity is not a reader activity (so we never
+  // flash a reading page mid-minute). lastShownClockMinute_ is set BEFORE
+  // requestUpdate() so a second loop tick before render runs doesn't fire a
+  // redundant trigger.
+  int64_t lastShownClockMinute_ = -1;
+  uint32_t lastClockCheckMs_ = 0;
+  void tickHeaderClock();
+
  public:
   explicit ActivityManager(GfxRenderer& renderer, MappedInputManager& mappedInput)
       : renderer(renderer), mappedInput(mappedInput), renderingMutex(xSemaphoreCreateMutex()) {
@@ -83,6 +96,10 @@ class ActivityManager {
 
   void begin();
   void loop();
+
+  // Returns true if a new render has been requested since the current render pass started.
+  // Safe to call from render() to abort expensive background work early.
+  bool hasPendingRender() const { return renderPending_; }
 
   // Will replace currentActivity and drop all activities on stack
   void replaceActivity(std::unique_ptr<Activity>&& newActivity);

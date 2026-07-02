@@ -318,7 +318,6 @@ void testCustomAssetMatcher() {
   const char* json = R"({
       "tag_name": "v2.4.1",
       "assets": [
-        {"name": "firmware-xlarge-v2.4.1.bin", "browser_download_url": "https://example.com/xlarge.bin", "size": 1234},
         {"name": "firmware-tiny-v2.4.1.bin", "browser_download_url": "https://example.com/tiny.bin", "size": 4321}
       ]
     })";

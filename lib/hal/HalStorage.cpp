@@ -21,6 +21,9 @@ HalStorage::HalStorage() {
 // begin() and ready() are only called from setup, no need to acquire mutex for them
 
 bool HalStorage::begin() {
+#ifdef QEMU_ENV
+  return false;
+#endif
   HalSpiBus::Lock spiLock;
   return SDCard.begin();
 }

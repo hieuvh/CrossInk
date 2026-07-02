@@ -28,7 +28,8 @@ class EpubReaderMenuActivity final : public Activity {
     READER_OPTIONS,
     BOOKMARK_TOGGLE,
     VIEW_BOOKMARKS,
-    DELETE_BOOKMARKS
+    DELETE_BOOKMARKS,
+    SECTION_HEADER
   };
 
   explicit EpubReaderMenuActivity(GfxRenderer& renderer, MappedInputManager& mappedInput, const std::string& title,
@@ -47,6 +48,7 @@ class EpubReaderMenuActivity final : public Activity {
   struct MenuItem {
     MenuAction action;
     StrId labelId;
+    bool isHeader = false;
   };
 
   static std::vector<MenuItem> buildMenuItems(bool hasFootnotes, bool hasBookmarks, bool isCurrentPageBookmarked,
@@ -55,7 +57,7 @@ class EpubReaderMenuActivity final : public Activity {
   // Fixed menu layout
   const std::vector<MenuItem> menuItems;
 
-  int selectedIndex = 0;
+  int selectedIndex = 1;  // index 0 is the first section header
 
   ButtonNavigator buttonNavigator;
   std::string title = "Reader Menu";

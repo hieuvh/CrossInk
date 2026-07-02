@@ -33,22 +33,12 @@ constexpr char LANG_FILE_BIN[] = "/.crosspoint/language.bin";
 constexpr char LANG_FILE_BAK[] = "/.crosspoint/language.bin.bak";
 constexpr uint8_t INVALID_READER_FONT_SIZE = 0xFF;
 constexpr CrossPointSettings::FONT_SIZE READER_FONT_SIZE_STORAGE_ORDER[] = {
-    CrossPointSettings::TINY,     CrossPointSettings::SMALL,       CrossPointSettings::MEDIUM,
-    CrossPointSettings::LARGE,    CrossPointSettings::EXTRA_LARGE, CrossPointSettings::TEENSY,
-    CrossPointSettings::HUGE_SIZE};
+    CrossPointSettings::TINY, CrossPointSettings::SMALL, CrossPointSettings::MEDIUM, CrossPointSettings::LARGE};
 constexpr CrossPointSettings::FONT_SIZE READER_FONT_SIZE_CYCLE_ORDER[] = {
-    CrossPointSettings::TEENSY,   CrossPointSettings::TINY,  CrossPointSettings::SMALL,
-    CrossPointSettings::MEDIUM,   CrossPointSettings::LARGE, CrossPointSettings::EXTRA_LARGE,
-    CrossPointSettings::HUGE_SIZE};
+    CrossPointSettings::TINY, CrossPointSettings::SMALL, CrossPointSettings::MEDIUM, CrossPointSettings::LARGE};
 
 bool isReaderFontSizeAvailable(const CrossPointSettings::FONT_SIZE size) {
   switch (size) {
-    case CrossPointSettings::TEENSY:
-#ifdef OMIT_TEENSY_FONT
-      return false;
-#else
-      return true;
-#endif
     case CrossPointSettings::TINY:
 #ifdef OMIT_TINY_FONT
       return false;
@@ -57,18 +47,6 @@ bool isReaderFontSizeAvailable(const CrossPointSettings::FONT_SIZE size) {
 #endif
     case CrossPointSettings::SMALL:
 #ifdef OMIT_SMALL_FONT
-      return false;
-#else
-      return true;
-#endif
-    case CrossPointSettings::EXTRA_LARGE:
-#ifdef OMIT_XLARGE_FONT
-      return false;
-#else
-      return true;
-#endif
-    case CrossPointSettings::HUGE_SIZE:
-#ifdef OMIT_HUGE_FONT
       return false;
 #else
       return true;
@@ -150,6 +128,17 @@ bool CrossPointSettings::saveToFile() const {
   return JsonSettingsIO::saveSettings(*this, SETTINGS_FILE_JSON);
 }
 
+namespace {
+// Clamp settings whose validity is not enforced by SettingsList (e.g. fields
+// not yet exposed in the settings UI). Defends against truncated/old files
+// and out-of-range JSON edits.
+void clampLoadedSettings(CrossPointSettings& s) {
+  if (s.showHeaderClock > 1) s.showHeaderClock = 1;
+  if (s.timeFormat > 1) s.timeFormat = 0;
+  if (s.utcOffsetIndex > 26) s.utcOffsetIndex = 12;
+}
+}  // namespace
+
 bool CrossPointSettings::loadFromFile() {
   // Try JSON first
   if (Storage.exists(SETTINGS_FILE_JSON)) {
@@ -157,6 +146,7 @@ bool CrossPointSettings::loadFromFile() {
     if (!json.isEmpty()) {
       bool resave = false;
       bool result = JsonSettingsIO::loadSettings(*this, json.c_str(), &resave);
+      if (result) clampLoadedSettings(*this);
       if (result && resave) {
         if (saveToFile()) {
           LOG_DBG("CPS", "Resaved settings to update format");
@@ -172,6 +162,7 @@ bool CrossPointSettings::loadFromFile() {
   // Fall back to binary migration
   if (Storage.exists(SETTINGS_FILE_BIN)) {
     if (loadFromBinaryFile()) {
+      clampLoadedSettings(*this);
       migrateLanguageBinaryFile();
       if (saveToFile()) {
         Storage.rename(SETTINGS_FILE_BIN, SETTINGS_FILE_BAK);
@@ -353,16 +344,6 @@ float CrossPointSettings::getReaderLineCompression() const {
         case WIDE:
           return 1.2f;
       }
-    case CHAREINK:
-      switch (lineSpacing) {
-        case TIGHT:
-          return 0.95f;
-        case NORMAL:
-        default:
-          return 1.1f;
-        case WIDE:
-          return 1.3f;
-      }
     case BITTER:
       switch (lineSpacing) {
         case TIGHT:
@@ -372,6 +353,18 @@ float CrossPointSettings::getReaderLineCompression() const {
           return 1.1f;
         case WIDE:
           return 1.3f;
+      }
+    case QUICKSAND:
+      // Quicksand has a tall x-height and rounded letterforms — the same
+      // spacing curve as LexendDeca reads cleanly on e-ink without crowding.
+      switch (lineSpacing) {
+        case TIGHT:
+          return 0.90f;
+        case NORMAL:
+        default:
+          return 1.0f;
+        case WIDE:
+          return 1.2f;
       }
   }
 }
@@ -472,10 +465,6 @@ int CrossPointSettings::getReaderFontId() const {
     case LEXENDDECA:
     default:
       switch (effectiveSize) {
-#ifndef OMIT_TEENSY_FONT
-        case TEENSY:
-          return LEXENDDECA_8_FONT_ID;
-#endif
 #ifndef OMIT_TINY_FONT
         case TINY:
           return LEXENDDECA_10_FONT_ID;
@@ -489,49 +478,9 @@ int CrossPointSettings::getReaderFontId() const {
           return LEXENDDECA_14_FONT_ID;
         case LARGE:
           return LEXENDDECA_16_FONT_ID;
-#ifndef OMIT_XLARGE_FONT
-        case EXTRA_LARGE:
-          return LEXENDDECA_18_FONT_ID;
-#endif
-#ifndef OMIT_HUGE_FONT
-        case HUGE_SIZE:
-          return LEXENDDECA_20_FONT_ID;
-#endif
-      }
-    case CHAREINK:
-      switch (effectiveSize) {
-#ifndef OMIT_TEENSY_FONT
-        case TEENSY:
-          return CHAREINK_8_FONT_ID;
-#endif
-#ifndef OMIT_TINY_FONT
-        case TINY:
-          return CHAREINK_10_FONT_ID;
-#endif
-#ifndef OMIT_SMALL_FONT
-        case SMALL:
-          return CHAREINK_12_FONT_ID;
-#endif
-        case MEDIUM:
-        default:
-          return CHAREINK_14_FONT_ID;
-        case LARGE:
-          return CHAREINK_16_FONT_ID;
-#ifndef OMIT_XLARGE_FONT
-        case EXTRA_LARGE:
-          return CHAREINK_18_FONT_ID;
-#endif
-#ifndef OMIT_HUGE_FONT
-        case HUGE_SIZE:
-          return CHAREINK_20_FONT_ID;
-#endif
       }
     case BITTER:
       switch (effectiveSize) {
-#ifndef OMIT_TEENSY_FONT
-        case TEENSY:
-          return BITTER_8_FONT_ID;
-#endif
 #ifndef OMIT_TINY_FONT
         case TINY:
           return BITTER_10_FONT_ID;
@@ -545,14 +494,22 @@ int CrossPointSettings::getReaderFontId() const {
           return BITTER_14_FONT_ID;
         case LARGE:
           return BITTER_16_FONT_ID;
-#ifndef OMIT_XLARGE_FONT
-        case EXTRA_LARGE:
-          return BITTER_18_FONT_ID;
+      }
+    case QUICKSAND:
+      switch (effectiveSize) {
+#ifndef OMIT_TINY_FONT
+        case TINY:
+          return QUICKSAND_10_FONT_ID;
 #endif
-#ifndef OMIT_HUGE_FONT
-        case HUGE_SIZE:
-          return BITTER_20_FONT_ID;
+#ifndef OMIT_SMALL_FONT
+        case SMALL:
+          return QUICKSAND_12_FONT_ID;
 #endif
+        case MEDIUM:
+        default:
+          return QUICKSAND_14_FONT_ID;
+        case LARGE:
+          return QUICKSAND_16_FONT_ID;
       }
   }
 }

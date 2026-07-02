@@ -110,9 +110,7 @@ jobs:
         with:
           name: firmware
           path: |
-            .pio/build/tiny/firmware-tiny.bin
-            .pio/build/xlarge/firmware-xlarge.bin
-            .pio/build/no_emoji/firmware-no_emoji.bin
+            .pio/build/customink/firmware-customink.bin
           if-no-files-found: error
 
   # This job is used as the PR required actions check, allows for changes to other steps in the future without breaking

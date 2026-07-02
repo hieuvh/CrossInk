@@ -21,6 +21,7 @@
 #include "components/icons/book.h"
 #include "components/themes/lyra/LyraTheme.h"
 #include "fontIds.h"
+#include "services/TimeService.h"
 
 namespace {
 constexpr int kCoverCornerRadius = 2;
@@ -41,6 +42,15 @@ void drawGridHeader(const GfxRenderer& renderer, const int pageWidth) {
   GUI.drawBatteryRight(renderer,
                        Rect{batteryX, rect.y + 5, LyraMetrics::values.batteryWidth, LyraMetrics::values.batteryHeight},
                        showBatteryPercentage);
+
+  // Header clock on the left, same baseline/font as the battery percentage on
+  // the right. This screen doesn't go through drawHeader, so we draw it inline.
+  if (SETTINGS.showHeaderClock) {
+    char clockBuf[16];
+    if (TimeService::instance().formatLocal(clockBuf, sizeof(clockBuf))) {
+      renderer.drawText(SMALL_FONT_ID, rect.x + LyraMetrics::values.contentSidePadding, rect.y + 5, clockBuf, true);
+    }
+  }
 
   const int titleMaxWidth = rect.width - LyraMetrics::values.contentSidePadding * 3;
   const std::string title =

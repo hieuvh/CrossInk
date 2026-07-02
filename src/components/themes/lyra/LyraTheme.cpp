@@ -13,9 +13,11 @@
 #include <string>
 #include <vector>
 
+#include "CrossPointSettings.h"
 #include "RecentBooksStore.h"
 #include "activities/reader/BookReadingStats.h"
 #include "components/UITheme.h"
+#include "services/TimeService.h"
 #include "components/icons/book.h"
 #include "components/icons/book24.h"
 #include "components/icons/chart.h"
@@ -31,6 +33,7 @@
 #include "components/icons/text24.h"
 #include "components/icons/transfer.h"
 #include "components/icons/wifi.h"
+#include "components/icons/bookmark.h"
 #include "fontIds.h"
 
 // Internal constants
@@ -84,6 +87,8 @@ const uint8_t* LyraTheme::iconForName(UIIcon icon, uint32_t size) {
         return WifiIcon;
       case UIIcon::Hotspot:
         return HotspotIcon;
+      case UIIcon::BookmarkIcon:
+        return Bookmark2Icon;
       default:
         return nullptr;
     }
@@ -113,6 +118,16 @@ void LyraTheme::fillBatteryIcon(const GfxRenderer& renderer, Rect rect, uint16_t
 
 void LyraTheme::drawHeader(const GfxRenderer& renderer, Rect rect, const char* title, const char* subtitle) const {
   renderer.fillRect(rect.x, rect.y, rect.width, rect.height, false);
+
+  // Header clock on the left, drawn on every screen that uses drawHeader
+  // (not just Home). Gated on SETTINGS.showHeaderClock.
+  if (SETTINGS.showHeaderClock) {
+    char clockBuf[16];
+    if (TimeService::instance().formatLocal(clockBuf, sizeof(clockBuf))) {
+      renderer.drawText(SMALL_FONT_ID, rect.x + LyraMetrics::values.contentSidePadding,
+                        rect.y + 5, clockBuf, true);
+    }
+  }
 
   const bool showBatteryPercentage =
       SETTINGS.hideBatteryPercentage != CrossPointSettings::HIDE_BATTERY_PERCENTAGE::HIDE_ALWAYS;
@@ -296,13 +311,11 @@ void LyraTheme::drawListWithMetrics(const GfxRenderer& renderer, Rect rect, int 
     const bool foreground = !(invertSelectedRows && selectedRow);
 
     if (isHeaderRow(i)) {
-      // Section header: bold uppercase label + divider line below
-      std::string label = rowTitle(i);
-      std::transform(label.begin(), label.end(), label.begin(),
-                     [](unsigned char c) { return static_cast<char>(std::toupper(c)); });
-      auto truncated = renderer.truncatedText(sectionHeaderFontId, label.c_str(),
-                                              contentWidth - metrics.contentSidePadding * 2, EpdFontFamily::BOLD);
-      const int headerTextY = itemY;
+      // Section header: bold label + divider line below.
+      const std::string label = rowTitle(i);
+      const auto truncated = renderer.truncatedText(sectionHeaderFontId, label.c_str(),
+                                                    contentWidth - metrics.contentSidePadding * 2, EpdFontFamily::BOLD);
+      const int headerTextY = itemY + (currentRowHeight - sectionHeaderLineHeight) / 2;
       renderer.drawText(sectionHeaderFontId, rect.x + metrics.contentSidePadding, headerTextY, truncated.c_str(), true,
                         EpdFontFamily::BOLD);
       renderer.drawLine(rect.x, itemY + currentRowHeight - 1, rect.x + contentWidth, itemY + currentRowHeight - 1,
@@ -322,13 +335,12 @@ void LyraTheme::drawListWithMetrics(const GfxRenderer& renderer, Rect rect, int 
       rowTextWidth -= valueWidth;
     }
 
-    auto itemName = rowTitle(i);
-    auto item = renderer.truncatedText(UI_10_FONT_ID, itemName.c_str(), rowTextWidth);
-    renderer.drawText(UI_10_FONT_ID, textX, itemY + 7, item.c_str(), foreground);
+    const std::string itemName = rowTitle(i);
+    const int titleWidth =
+        drawListRowTitle(renderer, textX, itemY + 7, UI_10_FONT_ID, itemName, rowTextWidth, foreground);
 
     // Apply checkerboard dither to create gray text effect for dimmed items
     if (rowDimmed && rowDimmed(i) && !selectedRow) {
-      const int titleWidth = renderer.getTextWidth(UI_10_FONT_ID, item.c_str());
       const int lineH = renderer.getLineHeight(UI_10_FONT_ID);
       for (int py = itemY + 7; py < itemY + 7 + lineH; py++)
         for (int px = textX; px < textX + titleWidth; px++)
@@ -337,13 +349,18 @@ void LyraTheme::drawListWithMetrics(const GfxRenderer& renderer, Rect rect, int 
 
     if (rowIcon != nullptr) {
       UIIcon icon = rowIcon(i);
+      uint32_t bitmapSize = iconSize;
       const uint8_t* iconBitmap = iconForName(icon, iconSize);
+      if (iconBitmap == nullptr && iconSize == mainMenuIconSize) {
+        iconBitmap = iconForName(icon, listIconSize);
+        bitmapSize = listIconSize;
+      }
       if (iconBitmap != nullptr) {
         const int iconX = rect.x + metrics.contentSidePadding + hPaddingInSelection;
         if (invertSelectedRows && selectedRow) {
-          renderer.drawIconInverted(iconBitmap, iconX, itemY + iconY, iconSize, iconSize);
+          renderer.drawIconInverted(iconBitmap, iconX, itemY + iconY, bitmapSize, bitmapSize);
         } else {
-          renderer.drawIcon(iconBitmap, iconX, itemY + iconY, iconSize, iconSize);
+          renderer.drawIcon(iconBitmap, iconX, itemY + iconY, bitmapSize, bitmapSize);
         }
       }
     }
@@ -375,16 +392,18 @@ void LyraTheme::drawListWithMetrics(const GfxRenderer& renderer, Rect rect, int 
 
 void LyraTheme::drawButtonHints(GfxRenderer& renderer, const char* btn1, const char* btn2, const char* btn3,
                                 const char* btn4, const bool allowInvertedText) const {
+  if (!SETTINGS.showButtonHints) return;
   const GfxRenderer::Orientation orig_orientation = renderer.getOrientation();
   const bool invertText = allowInvertedText && orig_orientation == GfxRenderer::Orientation::PortraitInverted;
   renderer.setOrientation(invertText ? GfxRenderer::Orientation::PortraitInverted : GfxRenderer::Orientation::Portrait);
 
   const int pageHeight = renderer.getScreenHeight();
   constexpr int buttonWidth = 80;
-  constexpr int smallButtonHeight = 15;
+  constexpr int smallButtonHeight = 12;
   constexpr int buttonHeight = LyraMetrics::values.buttonHintsHeight;
   const int buttonY = invertText ? pageHeight : LyraMetrics::values.buttonHintsHeight;
-  constexpr int textYOffset = 7;  // Distance from top of button to text baseline
+  const int textHeight = renderer.getTextHeight(SMALL_FONT_ID);
+  const int textYOffset = (buttonHeight - textHeight) / 2;
   // X3 has wider screen in portrait (528 vs 480), use more spacing
   constexpr int x4ButtonPositions[] = {58, 146, 254, 342};
   constexpr int x3ButtonPositions[] = {65, 157, 291, 383};
@@ -398,9 +417,33 @@ void LyraTheme::drawButtonHints(GfxRenderer& renderer, const char* btn1, const c
       renderer.fillRoundedRect(x, pageHeight - buttonY, buttonWidth, buttonHeight, cornerRadius, Color::White);
       renderer.drawRoundedRect(x, pageHeight - buttonY, buttonWidth, buttonHeight, 1, cornerRadius, true, true, false,
                                false, true);
-      const int textWidth = renderer.getTextWidth(SMALL_FONT_ID, labels[i]);
-      const int textX = x + (buttonWidth - 1 - textWidth) / 2;
-      renderer.drawText(SMALL_FONT_ID, textX, pageHeight - buttonY + textYOffset, labels[i]);
+      const TriangleAffix tri = parseTriangleAffix(labels[i]);
+      if (tri.direction != '\0' && tri.textLen == 0) {
+        constexpr int kArrowSize = 12;
+        const int iconX = x + (buttonWidth - kArrowSize) / 2;
+        const int iconY = pageHeight - buttonY + (buttonHeight - kArrowSize) / 2;
+        drawTriangleArrow(renderer, iconX, iconY, kArrowSize, tri.direction);
+      } else if (tri.direction != '\0') {
+        constexpr int kArrowSize = 10;
+        constexpr int kIconGap = 4;
+        const std::string text(tri.textStart, tri.textLen);
+        const int textWidth = renderer.getTextWidth(SMALL_FONT_ID, text.c_str());
+        const int groupWidth = kArrowSize + kIconGap + textWidth;
+        int curX = x + (buttonWidth - groupWidth) / 2;
+        const int iconY = pageHeight - buttonY + (buttonHeight - kArrowSize) / 2;
+        const int textY = pageHeight - buttonY + textYOffset;
+        if (tri.isLeading) {
+          drawTriangleArrow(renderer, curX, iconY, kArrowSize, tri.direction);
+          renderer.drawText(SMALL_FONT_ID, curX + kArrowSize + kIconGap, textY, text.c_str());
+        } else {
+          renderer.drawText(SMALL_FONT_ID, curX, textY, text.c_str());
+          drawTriangleArrow(renderer, curX + textWidth + kIconGap, iconY, kArrowSize, tri.direction);
+        }
+      } else {
+        const int textWidth = renderer.getTextWidth(SMALL_FONT_ID, labels[i]);
+        const int textX = x + (buttonWidth - 1 - textWidth) / 2;
+        renderer.drawText(SMALL_FONT_ID, textX, pageHeight - buttonY + textYOffset, labels[i]);
+      }
     } else {
       // Draw the filled background and border for a SMALL-sized button
       const int smallButtonY = invertText ? 0 : pageHeight - smallButtonHeight;

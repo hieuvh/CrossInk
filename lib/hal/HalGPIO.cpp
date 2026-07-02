@@ -192,11 +192,16 @@ HalGPIO::DeviceType detectDeviceTypeWithFingerprint() {
 
 void HalGPIO::begin() {
   inputMgr.begin();
+#ifndef QEMU_ENV
   SPI.begin(EPD_SCLK, SPI_MISO, EPD_MOSI, EPD_CS);
+#endif
 
 #ifdef FORCE_DEVICE_X3
   _deviceType = DeviceType::X3;
   LOG_INF("HW", "Device override active via build flag: X3");
+#elif defined(QEMU_ENV)
+  _deviceType = DeviceType::X4;
+  LOG_INF("HW", "QEMU environment: defaulting to X4");
 #else
   _deviceType = detectDeviceTypeWithFingerprint();
 #endif

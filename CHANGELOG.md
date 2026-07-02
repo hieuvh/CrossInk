@@ -1,5 +1,32 @@
 # Changelog
 
+## [Unreleased]
+
+### Added
+- Added a header clock on the Home screen, with a new **Time** section in Settings → System (24-hour or 12-hour format, UTC offset from −12 to +14).
+- Added cold-boot NTP time sync on X4 (uses the last-connected Wi-Fi, runs once, then disconnects).
+- Added DS3231 hardware RTC support on X3 (read and write).
+- Added manual time entry in Settings → System (on-device editor and via the web Settings page's "Set to my browser's time" button).
+- Added a **Button Hints** toggle in Settings → Display to show or hide the button label bar at the bottom of the screen.
+- Added **Quicksand** as a third built-in reading font (sizes 8/10/12/14/16). Regular uses the Medium weight for stronger strokes on e-ink; italic body text falls back to the upright weight since Quicksand ships no italic master.
+- Switched the UI font from Inter to **Quicksand SemiBold** (Regular slot) + **Quicksand Bold** (Bold slot) so labels and headers carry more weight on the e-ink panel.
+
+### Changed
+- Reader page turns now skip the grayscale anti-aliasing "upgrade" pass when another page turn is already queued — rapid skimming stays snappy, and the AA refresh only runs once you stop on a page.
+- Tightened menu navigation timings: button polling cadence is now 5 ms (was 10 ms), hold-to-scroll engages at 300 ms (was 500 ms), and continuous nav advances every 250 ms (was 500 ms) — long settings/file-browser lists feel noticeably more responsive.
+- Restored bold weight on Lyra section headers in Settings now that the Vietnamese first-character glyph bug is no longer relevant.
+
+### Fixed
+- Fixed intermittent crash when opening a book from the Lyra Carousel home screen (race condition between the main task freeing carousel frame buffers and the render task reading them).
+- Fixed Lyra Carousel theme showing a solid black square instead of an icon for selected items in lists that use subtitle rows (e.g. Recent Books), for icons that only have 24px variants.
+- Fixed selected button icons appearing as a solid black square instead of a white icon on black during font cache scan passes.
+
+### Removed
+- Removed Bionic Reading and Guide Dots features from the EPUB reader.
+- Removed all UI languages except English and Vietnamese.
+- Removed the **XTC Status Bar** setting (Settings → Display → Customize Status Bar) and the matching top/bottom overlay on XTC pages. The XTC reader was the only consumer, the overlay was off by default, and the rendering code had no other use — XTC pages now always render full-bleed.
+- Removed **Vietnamese** as a UI language. The Settings → System → Language entry and the `LanguageSelectActivity` screen are also gone now that English is the only built-in option; existing settings files with `"language": "VI"` load cleanly and fall back to English.
+
 ## [v1.2.10]
 
 ### Added

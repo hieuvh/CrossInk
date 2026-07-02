@@ -31,6 +31,7 @@
 #include "components/UITheme.h"
 #include "components/themes/lyra/LyraCarouselTheme.h"
 #include "fontIds.h"
+#include "services/TimeService.h"
 
 namespace {
 constexpr uint32_t CAROUSEL_CACHE_MAGIC = 0x43434152;  // "CCAR"
@@ -205,6 +206,8 @@ void appendCarouselCoverStateToKey(std::string& key, const RecentBook& book) {
     return;
   }
 
+  // Thumbnail existence is part of the key so a cached frame built before the
+  // sized thumbs existed (showing a placeholder) is not reused after they arrive.
   const std::string centerPath =
       UITheme::getCoverThumbPath(book.coverBmpPath, LyraCarouselTheme::kCenterCoverW, LyraCarouselTheme::kCenterCoverH);
   const std::string sidePath =
@@ -238,6 +241,8 @@ void buildCarouselCacheKey(const std::vector<RecentBook>& recentBooks, std::stri
 
 bool isCarouselCacheHeaderValid(const CarouselCacheHeader& header, uint64_t cacheKeyHash, int bookCount,
                                 const GfxRenderer& renderer) {
+  // Screen and cover dimensions guard against using an X4 cache on an X3 (or
+  // after a cover size constant change), where the pixel layout would be wrong.
   return header.magic == CAROUSEL_CACHE_MAGIC && header.version == CAROUSEL_CACHE_VERSION &&
          header.keyHash == cacheKeyHash && header.frameCount == bookCount &&
          header.frameBufferSize == renderer.getBufferSize() && header.screenWidth == renderer.getScreenWidth() &&
@@ -274,6 +279,10 @@ bool hasValidCarouselDiskCache(const std::vector<RecentBook>& recentBooks, const
   return readOk && isCarouselCacheHeaderValid(header, cacheKeyHash, bookCount, renderer);
 }
 
+// Returns the selectorIndex offset for the icon menu row.
+// In carousel mode, books occupy indices 0..N-1; the icon row starts at N.
+// In "continue reading in menu" mode, books are not separate selector positions
+// (the first menu item is Continue Reading instead), so the offset is 0.
 int getHomeMenuSelectionOffset(const std::vector<RecentBook>& recentBooks) {
   const auto& metrics = UITheme::getInstance().getMetrics();
   return metrics.homeContinueReadingInMenu ? 0 : static_cast<int>(recentBooks.size());
@@ -693,6 +702,9 @@ void HomeActivity::freeCarouselFrames() {
 }
 
 bool HomeActivity::allocateCarouselFrameSlots(int targetFrameCount) {
+  // Try descending slot counts so that a heap-pressure failure (3×48KB ≈ 144KB
+  // on an ESP32-C3 with ~380KB usable RAM) degrades to fewer cached frames
+  // rather than refusing to show the carousel at all.
   const size_t bufferSize = renderer.getBufferSize();
   int frameCount = 0;
   for (int attemptFrameCount = targetFrameCount; attemptFrameCount >= 1; --attemptFrameCount) {
@@ -765,12 +777,20 @@ void HomeActivity::renderCarouselFrameToCurrentBuffer(int bookIdx, BookReadingSt
 
   const bool frameHasReadingStats = hasAnyBookStats(frameStats) || hasAnyGlobalStats(globalStats);
   const auto menuItems = buildHomeMenuItems(hasOpdsServers, frameHasReadingStats, hasBookmarks);
+  // selectedIndex = -1: cache frames store the unselected state. The selection
+  // highlight is applied as a cheap overlay at render time via
+  // drawButtonMenuSelectionOverlay, so all book frames share one cached base image.
+  //
+  // IMPORTANT: this rect must match the one used in render()'s slow path
+  // (see "menuStartY/menuEndY" below) — the LyraCarousel theme now anchors the
+  // menu inside the rect, so a different rect here would bake the icons at a
+  // different Y than the live overlay expects, leaving the icon area blank.
+  const int preRenderMenuStartY = metrics.homeTopPadding + metrics.homeCoverTileHeight + metrics.homeMenuTopOffset;
+  const int preRenderMenuEndY = pageHeight - metrics.buttonHintsHeight;
+  const int preRenderMenuHeight = std::max(0, preRenderMenuEndY - preRenderMenuStartY);
   GUI.drawButtonMenu(
-      renderer,
-      Rect{0, metrics.homeTopPadding + metrics.homeCoverTileHeight + metrics.verticalSpacing, pageWidth,
-           pageHeight - (metrics.headerHeight + metrics.homeTopPadding + metrics.verticalSpacing * 2 +
-                         metrics.buttonHintsHeight)},
-      static_cast<int>(menuItems.size()), -1, [&menuItems](int index) { return std::string(menuItems[index].label); },
+      renderer, Rect{0, preRenderMenuStartY, pageWidth, preRenderMenuHeight}, static_cast<int>(menuItems.size()), -1,
+      [&menuItems](int index) { return std::string(menuItems[index].label); },
       [&menuItems](int index) { return menuItems[index].icon; });
 
   const auto labels = mappedInput.mapLabels("", tr(STR_SELECT), tr(STR_DIR_LEFT), tr(STR_DIR_RIGHT));
@@ -787,6 +807,8 @@ bool HomeActivity::buildCarouselCacheFile(const std::string& cacheKey, uint64_t 
   uint8_t* frameBuffer = renderer.getFrameBuffer();
   if (!frameBuffer || bookCount <= 0) return false;
 
+  // Write via tmp file then rename so a power loss during the write leaves no
+  // partial/corrupt cache — the old valid file stays until the new one is ready.
   Storage.mkdir("/.crosspoint");
   if (Storage.exists(CAROUSEL_CACHE_TMP_PATH)) {
     Storage.remove(CAROUSEL_CACHE_TMP_PATH);
@@ -822,6 +844,8 @@ bool HomeActivity::buildCarouselCacheFile(const std::string& cacheKey, uint64_t 
   uint8_t* progressFrameBuffer = nullptr;
   const size_t bufferSize = renderer.getBufferSize();
   if (showProgressPopup) {
+    // Snapshot the popup frame so each carousel render can be written to the
+    // framebuffer without destroying the progress overlay pixels.
     progressFrameBuffer = static_cast<uint8_t*>(malloc(bufferSize));
     if (!progressFrameBuffer) {
       LOG_ERR("HOME", "carousel: failed to allocate progress overlay buffer");
@@ -834,6 +858,7 @@ bool HomeActivity::buildCarouselCacheFile(const std::string& cacheKey, uint64_t 
   }
   bool writeFailed = false;
   for (int i = 0; i < bookCount; ++i) {
+    // Reuse any already-rendered in-memory frame to avoid redundant SD reads.
     const int cachedSlot = gCarouselCache.findFrameSlot(i);
     if (cachedSlot >= 0 && carouselFrames[cachedSlot]) {
       memcpy(frameBuffer, carouselFrames[cachedSlot], renderer.getBufferSize());
@@ -845,6 +870,7 @@ bool HomeActivity::buildCarouselCacheFile(const std::string& cacheKey, uint64_t 
       break;
     }
     if (showProgressPopup) {
+      // Restore the popup frame so the progress bar is visible between renders.
       memcpy(frameBuffer, progressFrameBuffer, bufferSize);
       GUI.fillPopupProgress(renderer, popupRect, ((i + 1) * 100) / bookCount);
     }
@@ -893,6 +919,8 @@ bool HomeActivity::loadCarouselFrameFromDisk(uint64_t cacheKeyHash, int bookCoun
     return false;
   }
 
+  // Frames are stored sequentially after the header; seek directly to the
+  // requested book so any single frame can be loaded without reading all others.
   const size_t frameOffset = sizeof(CarouselCacheHeader) + static_cast<size_t>(bookIdx) * renderer.getBufferSize();
   if (!file.seek(frameOffset)) {
     file.close();
@@ -919,12 +947,15 @@ bool HomeActivity::loadCarouselFrameFromDisk(uint64_t cacheKeyHash, int bookCoun
 }
 
 int HomeActivity::chooseCarouselEvictionSlot(int centerIdx, int bookCount, std::optional<int> protectedBookIdx) const {
+  // Prefer an uninitialized slot (bookIdx == -1) to avoid evicting a valid frame.
   for (int i = 0; i < kCarouselFrameCount; ++i) {
     if (gCarouselCache.frames[i] && gCarouselCache.frameBookIdx[i] < 0) {
       return i;
     }
   }
 
+  // No free slot: evict the book furthest from center using circular distance
+  // so books wrap-around correctly (e.g. book 0 and book N-1 are adjacent).
   int evictSlot = -1;
   int maxDist = -1;
   for (int i = 0; i < kCarouselFrameCount; ++i) {
@@ -1004,6 +1035,10 @@ bool HomeActivity::preRenderCarouselFrames(bool showProgressPopup) {
 
   const bool hasFullFrameCache = gCarouselCache.frameCount >= targetFrameCount;
   gCarouselCache.key = newKey;
+  // Set keyHash only when the SD cache matches the current render. A non-zero
+  // keyHash tells render() it can fall back to loadCarouselFrameFromDisk for
+  // frames outside the sliding window. If we just rendered fresh frames without
+  // a matching SD snapshot, leave it 0 to skip those disk-load attempts.
   gCarouselCache.keyHash = diskCacheValid ? newKeyHash : 0;
   carouselFramesReady = true;
   coverRendered = false;
@@ -1028,6 +1063,10 @@ bool HomeActivity::preRenderCarouselFrames(bool showProgressPopup) {
 }
 
 void HomeActivity::loop() {
+  // Live header-clock refresh is centralized in ActivityManager::tickHeaderClock,
+  // so every activity gets it (except reader). HomeActivity no longer needs its
+  // own per-minute trigger here.
+
   const bool isCarousel =
       static_cast<CrossPointSettings::UI_THEME>(SETTINGS.uiTheme) == CrossPointSettings::UI_THEME::LYRA_CAROUSEL;
   const int previousHighlightedBookIdx = getHighlightedBookIndex();
@@ -1145,6 +1184,9 @@ void HomeActivity::render(RenderLock&&) {
     const int centerIdx = inCarouselRow ? selectorIndex : lastCarouselBookIndex;
     int slotIdx = gCarouselCache.findFrameSlot(centerIdx);
 
+    // Sliding window holds only kCarouselFrameCount slots. If the user navigated
+    // past them, try loading the missing frame from the SD snapshot before
+    // falling through to the full slow-path re-render.
     if (frameBuffer && slotIdx < 0 && gCarouselCache.keyHash != 0 && bookCount > 0) {
       const int evictSlot = chooseCarouselEvictionSlot(centerIdx, bookCount);
       if (evictSlot >= 0 && loadCarouselFrameFromDisk(gCarouselCache.keyHash, bookCount, centerIdx, evictSlot)) {
@@ -1154,16 +1196,36 @@ void HomeActivity::render(RenderLock&&) {
 
     if (frameBuffer && slotIdx >= 0 && carouselFrames[slotIdx]) {
       memcpy(frameBuffer, carouselFrames[slotIdx], renderer.getBufferSize());
+      // Sync the static pre-render index so drawRecentBookCover knows which book
+      // is centered (used for cover buffer coordinate lookups inside the theme).
       LyraCarouselTheme::setPreRenderIndex(centerIdx);
+
+      // Re-draw the header on top of the cached frame. The cached frame baked
+      // in the clock text and battery icon at build time, so without this the
+      // live-clock minute trigger would memcpy stale clock pixels every minute.
+      // drawHeader clears its own rect, so we overwrite the cached header
+      // cleanly. Cheap (≈60px tall) compared to a full re-render.
+      GUI.drawHeader(renderer, Rect{0, metrics.topPadding, pageWidth, metrics.homeTopPadding}, nullptr);
 
       GUI.drawCarouselBorder(renderer, Rect{0, metrics.homeTopPadding, pageWidth, metrics.homeCoverTileHeight},
                              recentBooks, centerIdx, inCarouselRow);
       if (!inCarouselRow) {
+        // The cached frame stores all icons without a selection highlight.
+        // Apply the highlight as a lightweight overlay only when the user has
+        // navigated into the icon menu row, avoiding a full cache rebuild per
+        // selection change.
         const auto menuItems = buildHomeMenuItems(hasOpdsServers, hasReadingStats, hasBookmarks);
         if (static_cast<CrossPointSettings::UI_THEME>(SETTINGS.uiTheme) ==
             CrossPointSettings::UI_THEME::LYRA_CAROUSEL) {
+          // Same rect the cached frame was rendered against in the slow path
+          // below, so the overlay's tile coordinates line up exactly with the
+          // baked-in icon positions.
+          const int menuStartY = metrics.homeTopPadding + metrics.homeCoverTileHeight + metrics.homeMenuTopOffset;
+          const int menuEndY = pageHeight - metrics.buttonHintsHeight;
+          const int menuHeight = std::max(0, menuEndY - menuStartY);
           static_cast<const LyraCarouselTheme&>(GUI).drawButtonMenuSelectionOverlay(
-              renderer, static_cast<int>(menuItems.size()), selectorIndex - recentBooks.size(),
+              renderer, Rect{0, menuStartY, pageWidth, menuHeight}, static_cast<int>(menuItems.size()),
+              selectorIndex - recentBooks.size(),
               [&menuItems](int index) { return std::string(menuItems[index].label); },
               [&menuItems](int index) { return menuItems[index].icon; });
         }
@@ -1172,8 +1234,8 @@ void HomeActivity::render(RenderLock&&) {
       renderer.displayBuffer();
       // E-ink refresh complete — pre-render the missing adjacent frame while idle.
       updateSlidingWindowCache(centerIdx, bookCount);
-      // Mirror the slow-path trigger: generate missing thumbnails on the second
-      // render so the E-ink is already showing something before the SD work starts.
+      // Defer thumbnail generation and cover loading until after the first E-ink
+      // update so the screen is never blank while SD work is running.
       if (!firstRenderDone) {
         firstRenderDone = true;
         requestUpdate();
@@ -1186,6 +1248,8 @@ void HomeActivity::render(RenderLock&&) {
   }
 
   renderer.clearScreen();
+  // Restore previously snapshotted cover pixels to avoid re-reading from SD
+  // when only the menu selection changed (cover bitmap is expensive to load).
   bool bufferRestored = coverBufferStored && restoreCoverBuffer();
 
   GUI.drawHeader(renderer, Rect{0, metrics.topPadding, pageWidth, metrics.homeTopPadding},
@@ -1281,16 +1345,29 @@ void HomeActivity::updateSlidingWindowCache(int centerIdx, int bookCount) {
   // Fill both adjacent slots. Called once for prev, once for next.
   // Prefers uninitialized slots (book index -1) over evicting valid frames.
   // When eviction is required, removes the slot furthest from center.
+  //
+  // Disk loads (~50ms) run even when a new render is pending — they're cheap
+  // enough that pre-warming the adjacent slot is worth the small extra wait
+  // before the next render fires. Only the expensive renderCarouselFrame
+  // (~500ms full re-render) is skipped on pending so the queued navigation
+  // doesn't sit behind a from-scratch render.
   auto renderMissing = [&](int missingIdx) {
     if (gCarouselCache.findFrameSlot(missingIdx) >= 0) return;
+
+    auto loadOrRender = [&](int slot) {
+      if (loadCarouselFrameFromDisk(gCarouselCache.keyHash, bookCount, missingIdx, slot)) {
+        renderedCount++;
+        return;
+      }
+      if (activityManager.hasPendingRender()) return;
+      renderCarouselFrame(missingIdx, slot);
+      renderedCount++;
+    };
 
     // Prefer an uninitialized slot so we don't evict a valid neighbor.
     for (int i = 0; i < kCarouselFrameCount; ++i) {
       if (gCarouselCache.frames[i] && gCarouselCache.frameBookIdx[i] < 0) {
-        if (!loadCarouselFrameFromDisk(gCarouselCache.keyHash, bookCount, missingIdx, i)) {
-          renderCarouselFrame(missingIdx, i);
-        }
-        renderedCount++;
+        loadOrRender(i);
         return;
       }
     }
@@ -1311,23 +1388,41 @@ void HomeActivity::updateSlidingWindowCache(int centerIdx, int bookCount) {
     if (evictSlot >= 0) {
       LOG_DBG("HOME", "carousel: evict slot %d (book %d) -> book %d", evictSlot, gCarouselCache.frameBookIdx[evictSlot],
               missingIdx);
-      if (!loadCarouselFrameFromDisk(gCarouselCache.keyHash, bookCount, missingIdx, evictSlot)) {
-        renderCarouselFrame(missingIdx, evictSlot);
-      }
-      renderedCount++;
+      loadOrRender(evictSlot);
     }
   };
 
-  renderMissing(prevIdx);
-  renderMissing(nextIdx);
+  // Prefetch in the direction of travel first. If the user just pressed Right
+  // (centerIdx advanced by one), fill nextIdx before prevIdx so the very next
+  // Right press is a cache hit. Falls back to (prev, next) order when no
+  // direction is known yet (first navigation after entering Home).
+  bool movingForward = true;
+  if (gCarouselCache.lastCenterIdx >= 0 && gCarouselCache.lastCenterIdx != centerIdx && bookCount > 1) {
+    const int forwardDist = (centerIdx - gCarouselCache.lastCenterIdx + bookCount) % bookCount;
+    const int backwardDist = (gCarouselCache.lastCenterIdx - centerIdx + bookCount) % bookCount;
+    movingForward = forwardDist <= backwardDist;
+  }
+  if (movingForward) {
+    renderMissing(nextIdx);
+    renderMissing(prevIdx);
+  } else {
+    renderMissing(prevIdx);
+    renderMissing(nextIdx);
+  }
   gCarouselCache.lastCenterIdx = centerIdx;
   LOG_DBG("HOME", "carousel: updateSlidingWindowCache center=%d rendered=%d took %lums", centerIdx, renderedCount,
           millis() - start);
 }
 
 void HomeActivity::onSelectBook(const std::string& path) {
-  gCarouselCache.invalidate();
-  freeCarouselFrames();
+  {
+    // Free the ~144KB frame cache before entering the reader so its large
+    // EPUB parse buffers don't compete with the carousel heap on the way in.
+    // The cache is rebuilt from the SD snapshot on the next return to Home.
+    RenderLock lock(*this);
+    gCarouselCache.invalidate();
+    freeCarouselFrames();
+  }
   if (Storage.exists(CAROUSEL_CACHE_TMP_PATH)) {
     Storage.remove(CAROUSEL_CACHE_TMP_PATH);
   }

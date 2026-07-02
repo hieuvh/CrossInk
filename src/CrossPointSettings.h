@@ -59,12 +59,6 @@ class CrossPointSettings {
     STATUS_BAR_PROGRESS_BAR_THICKNESS_COUNT
   };
   enum STATUS_BAR_TITLE { BOOK_TITLE = 0, CHAPTER_TITLE = 1, HIDE_TITLE = 2, STATUS_BAR_TITLE_COUNT };
-  enum XTC_STATUS_BAR_MODE {
-    XTC_STATUS_BAR_HIDE = 0,
-    XTC_STATUS_BAR_BOTTOM = 1,
-    XTC_STATUS_BAR_TOP = 2,
-    XTC_STATUS_BAR_MODE_COUNT
-  };
 
   enum ORIENTATION {
     PORTRAIT = 0,       // 480x800 logical coordinates (current default)
@@ -116,7 +110,7 @@ class CrossPointSettings {
   };
 
   // Font family options (built-in fonts only; SD card fonts use sdFontFamilyName)
-  enum FONT_FAMILY { LEXENDDECA = 0, BITTER = 1, CHAREINK = 2, FONT_FAMILY_COUNT };
+  enum FONT_FAMILY { LEXENDDECA = 0, BITTER = 1, QUICKSAND = 2, FONT_FAMILY_COUNT };
   static constexpr uint8_t BUILTIN_FONT_COUNT = FONT_FAMILY_COUNT;
   // Font size options
   enum FONT_SIZE {
@@ -124,9 +118,6 @@ class CrossPointSettings {
     SMALL = 1,
     MEDIUM = 2,
     LARGE = 3,
-    EXTRA_LARGE = 4,
-    TEENSY = 5,
-    HUGE_SIZE = 6,
     FONT_SIZE_COUNT
   };
   enum LINE_COMPRESSION { TIGHT = 0, NORMAL = 1, WIDE = 2, LINE_COMPRESSION_COUNT };
@@ -190,18 +181,12 @@ class CrossPointSettings {
     LONG_PRESS_BUTTON_BEHAVIOR_COUNT
   };
 
-  // UI Theme. LYRA_CAROUSEL remains as a legacy value while the option is hidden by default.
   enum UI_THEME {
     CLASSIC = 0,
     LYRA = 1,
     LYRA_3_COVERS = 2,
-    ROUNDEDRAFF = 3,
-    LYRA_CAROUSEL = 4,
-#if defined(CROSSINK_ENABLE_LYRA_CAROUSEL) && CROSSINK_ENABLE_LYRA_CAROUSEL
-    UI_THEME_COUNT = 5
-#else
+    LYRA_CAROUSEL = 3,
     UI_THEME_COUNT = 4
-#endif
   };
   enum RECENT_BOOKS_VIEW { RECENT_BOOKS_LIST = 0, RECENT_BOOKS_GRID = 1, RECENT_BOOKS_VIEW_COUNT };
 
@@ -249,7 +234,6 @@ class CrossPointSettings {
   uint8_t statusBarProgressBarThickness = PROGRESS_BAR_NORMAL;
   uint8_t statusBarTitle = CHAPTER_TITLE;
   uint8_t statusBarBattery = 1;
-  uint8_t xtcStatusBarMode = XTC_STATUS_BAR_HIDE;
   // Text rendering settings
   uint8_t extraParagraphSpacing = 1;
   uint8_t forceParagraphIndents = 0;
@@ -300,6 +284,10 @@ class CrossPointSettings {
   char opdsPassword[64] = "";
   // Hide battery percentage
   uint8_t hideBatteryPercentage = HIDE_NEVER;
+  // Time / clock display
+  uint8_t showHeaderClock = 1;     // 0 = hidden, 1 = shown
+  uint8_t timeFormat = 0;          // 0 = 24h, 1 = 12h
+  uint8_t utcOffsetIndex = 12;     // 0..26 → UTC-12..UTC+14 (12 = UTC+0)
   // Long-press page turn button behavior
   uint8_t longPressButtonBehavior = OFF;
   // UI Theme
@@ -310,10 +298,6 @@ class CrossPointSettings {
   uint8_t fadingFix = 0;
   // Use book's embedded CSS styles for EPUB rendering (1 = enabled, 0 = disabled)
   uint8_t embeddedStyle = 1;
-  // Focus Reading - emphasizes the first part of words with bold
-  uint8_t bionicReadingEnabled = 0;
-  // Guide Dots - places a middle dot between words to guide the eye
-  uint8_t guideReadingEnabled = 0;
   // SD card font family name (empty = use built-in fontFamily)
   char sdFontFamilyName[32] = "";
   // Show hidden files/directories (starting with '.') in the file browser (0 = hidden, 1 = show)
@@ -328,6 +312,8 @@ class CrossPointSettings {
   uint8_t tiltPageTurn = TILT_OFF;
   // Language setting (Language enum index, default 0 = EN)
   uint8_t language = 0;
+  // Show button hints bar at the bottom of each screen (1 = show, 0 = hide)
+  uint8_t showButtonHints = 1;
 
   ~CrossPointSettings() = default;
 

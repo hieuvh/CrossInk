@@ -6,7 +6,6 @@
 #include <I18n.h>
 
 #include <algorithm>
-#include <atomic>
 #include <cstdint>
 #include <string>
 #include <vector>
@@ -53,41 +52,51 @@ constexpr int kTitleDrawOffset = 5;
 constexpr int kTitleBottomGap = 8;
 constexpr int kMenuLabelTopGap = 3;
 constexpr int kMenuLabelBottomGap = 4;
-constexpr int kMenuRowDrop = 31;
+// Nudge the icon row down inside the menu rect. Smaller values raise the icons,
+// adding visual breathing room above the button-hints strip. With the current
+// 32 px button-hints band and 60 px icon-row tile, ~12 leaves a comfortable
+// ~21 px gap between the icon bottom and the hints strip.
+constexpr int kMenuRowDrop = 12;
 
 constexpr int kStatsToProgressGap = 6;
 
-constexpr int kCornerRadius = 6;
+constexpr int kCornerRadius = 4;
 constexpr int kThinOutlineW = 1;    // always-visible outline around centre cover
-constexpr int kSelectionLineW = 3;  // thicker outline when centre cover is selected
+constexpr int kSelectionLineW = 2;  // thicker outline when centre cover is selected
 constexpr int kCenterOutlineW = 4;  // white ring around centre cover
 
 // Icon row — icons are 32×32 bitmaps; drawIcon does NOT scale
 constexpr int kMenuIconSize = 32;  // must match actual bitmap dimensions
 constexpr int kMenuIconPad = 14;   // symmetric vertical padding → tile height = 60
-constexpr int kHighlightPad = 7;   // highlight padding around the selected icon
-// Row is anchored to the bottom of the screen, just above button hints
-constexpr int kButtonHintsH = LyraCarouselMetrics::values.buttonHintsHeight;
+constexpr int kHighlightPad = 12;  // highlight padding around the selected icon
+constexpr int kHighlightCornerRadius = 99;
 
 struct MenuLayoutMetrics {
+  int tileX;  // left edge of the menu band, copied from rect.x for the callers' convenience
   int tileH;
   int tileW;
+  int bandWidth;  // rect.width, for label clearing/centering
   int labelLineHeight;
   int rowY;
   int labelY;
 };
 
-MenuLayoutMetrics computeMenuLayout(const GfxRenderer& renderer, int buttonCount) {
+// The menu band lives inside the rect supplied by the caller (HomeActivity); we
+// anchor the icon row near the bottom of that rect so the label, top-gap, and
+// bottom-gap all fit above it. kMenuRowDrop nudges the icon row down to balance
+// optical weight against the cover stack above.
+MenuLayoutMetrics computeMenuLayout(const GfxRenderer& renderer, Rect rect, int buttonCount) {
   const int tileH = kMenuIconPad + kMenuIconSize + kMenuIconPad;
   const int labelLineHeight = renderer.getLineHeight(kMenuLabelFontId);
-  const int rowY = renderer.getScreenHeight() - kButtonHintsH - tileH - kMenuLabelTopGap - labelLineHeight -
-                   kMenuLabelBottomGap + kMenuRowDrop;
+  const int rowY = rect.y + rect.height - tileH - kMenuLabelTopGap - labelLineHeight - kMenuLabelBottomGap +
+                   kMenuRowDrop;
+  const int tileW = buttonCount > 0 ? rect.width / buttonCount : rect.width;
   return {
-      tileH, renderer.getScreenWidth() / buttonCount, labelLineHeight, rowY, rowY - kMenuLabelTopGap - labelLineHeight,
+      rect.x, tileH, tileW, rect.width, labelLineHeight, rowY, rowY - kMenuLabelTopGap - labelLineHeight,
   };
 }
 
-std::atomic<int> lastCarouselSelectorIndex{-1};
+int lastCarouselSelectorIndex = -1;
 Rect lastCenterCoverRect{0, 0, 0, 0};
 Rect cachedCenterCoverRects[LyraCarouselMetrics::values.homeRecentBooksCount];
 
@@ -108,26 +117,12 @@ Rect computeCenterCoverSlotRect(const GfxRenderer& renderer, Rect rect, const st
   }
 
   const int screenW = renderer.getScreenWidth();
-  const int titleLineHeight = renderer.getLineHeight(kTitleFontId);
-  const int reservedTitleBlockHeight = titleLineHeight * 2;
-  const int titleY = rect.y + kTitleTopClearance;
-  const int centerTileY = std::max(rect.y + kCoverTopPad, titleY + reservedTitleBlockHeight + kTitleBottomGap);
+  // Cover sits near the top of the carousel rect; the title now renders below
+  // the cover in drawRecentBookCover, so no need to reserve title space above.
+  const int centerTileY = rect.y + kCoverTopPad;
   const int centerDrawY = centerTileY + kCenterCoverTopInset - kCarouselVerticalLift;
   const int centerX = (screenW - kDisplayCenterW) / 2;
   return Rect{centerX, centerDrawY, kDisplayCenterW, kDisplayCenterH};
-}
-
-void drawMenuBookmarkIcon(const GfxRenderer& renderer, int x, int y, bool selected) {
-  constexpr int ribbonWidth = 16;
-  constexpr int ribbonHeight = 22;
-  constexpr int notchSize = 6;
-  const int iconX = x + (kMenuIconSize - ribbonWidth) / 2;
-  const int iconY = y + 4;
-  const int centerX = iconX + ribbonWidth / 2;
-
-  const int polyX[5] = {iconX, iconX + ribbonWidth, iconX + ribbonWidth, centerX, iconX};
-  const int polyY[5] = {iconY, iconY, iconY + ribbonHeight, iconY + ribbonHeight - notchSize, iconY + ribbonHeight};
-  renderer.fillPolygon(polyX, polyY, 5, !selected);
 }
 
 void drawPerspectiveOutline(const GfxRenderer& renderer, int x, int y, int width, int leftHeight, int rightHeight) {
@@ -161,7 +156,7 @@ void fillPerspectiveSilhouette(const GfxRenderer& renderer, int x, int y, int wi
 // Static helpers
 // ---------------------------------------------------------------------------
 void LyraCarouselTheme::setPreRenderIndex(int idx) {
-  lastCarouselSelectorIndex.store(idx, std::memory_order_relaxed);
+  lastCarouselSelectorIndex = idx;
   if (idx >= 0 && idx < LyraCarouselMetrics::values.homeRecentBooksCount) {
     const Rect cachedRect = cachedCenterCoverRects[idx];
     if (cachedRect.width > 0 && cachedRect.height > 0) lastCenterCoverRect = cachedRect;
@@ -196,7 +191,7 @@ void LyraCarouselTheme::drawRecentBookCover(GfxRenderer& renderer, Rect rect,
   // When navigating the icon row, keep showing the last carousel position —
   // falling back to 0 on first use (lastCarouselSelectorIndex == -1).
   const bool inCarouselRow = (selectorIndex < bookCount);
-  const int lastSelectorIndex = lastCarouselSelectorIndex.load(std::memory_order_relaxed);
+  const int lastSelectorIndex = lastCarouselSelectorIndex;
   int centerIdx = inCarouselRow ? selectorIndex : (lastSelectorIndex >= 0 ? lastSelectorIndex : 0);
 
   if (centerIdx >= bookCount) {
@@ -214,14 +209,7 @@ void LyraCarouselTheme::drawRecentBookCover(GfxRenderer& renderer, Rect rect,
   }
 
   const int screenW = renderer.getScreenWidth();
-  const int textMaxWidth = std::min(screenW - 40, kCenterCoverMaxW + 40);
-  const auto titleLines =
-      renderer.wrappedText(kTitleFontId, recentBooks[centerIdx].title.c_str(), textMaxWidth, 2, EpdFontFamily::BOLD);
   const int titleLineHeight = renderer.getLineHeight(kTitleFontId);
-  const int titleBlockHeight = titleLineHeight * static_cast<int>(titleLines.size());
-  const int reservedTitleBlockHeight = titleLineHeight * 2;
-  const int titleY = rect.y + kTitleTopClearance;
-  const int centerTileY = std::max(rect.y + kCoverTopPad, titleY + reservedTitleBlockHeight + kTitleBottomGap);
   const int sideMaxHeight = std::max(kNearSideInnerH, kNearSideOuterH);
   const Rect centerCoverSlotRect = computeCenterCoverSlotRect(renderer, rect, recentBooks);
   const int centerDrawY = centerCoverSlotRect.y;
@@ -336,7 +324,12 @@ void LyraCarouselTheme::drawRecentBookCover(GfxRenderer& renderer, Rect rect,
   };
 
   if (!coverRendered) {
-    lastCarouselSelectorIndex.store(centerIdx, std::memory_order_relaxed);
+    const int textMaxWidth = std::min(screenW - 40, kCenterCoverMaxW + 40);
+    const auto titleLines =
+        renderer.wrappedText(kTitleFontId, recentBooks[centerIdx].title.c_str(), textMaxWidth, 2, EpdFontFamily::BOLD);
+    const int titleBlockHeight = titleLineHeight * static_cast<int>(titleLines.size());
+
+    lastCarouselSelectorIndex = centerIdx;
 
     // Clear the entire cover tile to white so stale pixels from old positions
     // don't persist (drawBitmap only sets black pixels, never clears).
@@ -360,10 +353,11 @@ void LyraCarouselTheme::drawRecentBookCover(GfxRenderer& renderer, Rect rect,
       cachedCenterCoverRects[centerIdx] = centerCoverRect;
     }
 
-    // Title sits above the center cover; wrap to 2 lines and ellipsize on line 2 if needed.
+    // Title sits below the center cover; wrap to 2 lines and ellipsize on line 2 if needed.
+    // Drop the unused titleBlockHeight var if line-count isn't used elsewhere.
+    (void)titleBlockHeight;
     const int textCenterX = centerCoverRect.x + centerCoverRect.width / 2;
-    const int titleVerticalInset = (reservedTitleBlockHeight - titleBlockHeight) / 2;
-    int currentTitleY = titleY + titleVerticalInset + kTitleDrawOffset;
+    int currentTitleY = centerCoverRect.y + centerCoverRect.height + kTitleBottomGap + kTitleDrawOffset;
     for (const auto& titleLine : titleLines) {
       const int titleW = renderer.getTextWidth(kTitleFontId, titleLine.c_str(), EpdFontFamily::BOLD);
       renderer.drawText(kTitleFontId, textCenterX - titleW / 2, currentTitleY, titleLine.c_str(), true,
@@ -372,16 +366,16 @@ void LyraCarouselTheme::drawRecentBookCover(GfxRenderer& renderer, Rect rect,
     }
 
     // Dots — centred under the displayed centre cover, count = actual book count
-    const int dotsY = centerCoverSlotRect.y + centerCoverSlotRect.height + 8;
-    const int totalDotsW = bookCount * kDotSize + (bookCount - 1) * kDotGap;
-    int dotX = centerCoverSlotRect.x + (centerCoverSlotRect.width - totalDotsW) / 2;
-    for (int i = 0; i < bookCount; ++i) {
-      if (i == centerIdx)
-        renderer.fillRect(dotX, dotsY, kDotSize, kDotSize, true);
-      else
-        renderer.drawRect(dotX, dotsY, kDotSize, kDotSize, true);
-      dotX += kDotSize + kDotGap;
-    }
+    // const int dotsY = centerCoverSlotRect.y + centerCoverSlotRect.height + 8;
+    // const int totalDotsW = bookCount * kDotSize + (bookCount - 1) * kDotGap;
+    // int dotX = centerCoverSlotRect.x + (centerCoverSlotRect.width - totalDotsW) / 2;
+    // for (int i = 0; i < bookCount; ++i) {
+    //   if (i == centerIdx)
+    //     renderer.fillRect(dotX, dotsY, kDotSize, kDotSize, true);
+    //   else
+    //     renderer.drawRect(dotX, dotsY, kDotSize, kDotSize, true);
+    //   dotX += kDotSize + kDotGap;
+    // }
 
     // Lyra-style per-book stats, centered below the cover.
     const int statsLineHeight = renderer.getLineHeight(SMALL_FONT_ID);
@@ -389,30 +383,32 @@ void LyraCarouselTheme::drawRecentBookCover(GfxRenderer& renderer, Rect rect,
     const bool hasStats = (stats != nullptr && stats->sessionCount > 0);
     const bool hasProgress = progressPercent >= 0.0f;
     constexpr int footerTopPad = 2;
-    int infoY = dotsY + kDotSize + 8 + footerTopPad;
+    int infoY = 8 + footerTopPad + currentTitleY + 10;// + dotsY + kDotSize;
 
+    const int progressBarWidth = centerCoverSlotRect.width - 20;
     if (hasStats) {
       char buf[48];
       char statLine[64];
       BookReadingStats::formatDuration(stats->totalReadingSeconds, buf, sizeof(buf));
-      snprintf(statLine, sizeof(statLine), "%s%s", tr(STR_STATS_TOTAL_TIME), buf);
+      snprintf(statLine, sizeof(statLine), "%s", buf);
       const int totalTimeW = renderer.getTextWidth(SMALL_FONT_ID, statLine);
-      renderer.drawText(SMALL_FONT_ID, textCenterX - totalTimeW / 2, infoY, statLine, true);
-      infoY += statsLineHeight + kStatsToProgressGap;
+      const int totalTimeX = textCenterX - progressBarWidth / 2 + 4;
+      renderer.drawText(SMALL_FONT_ID, totalTimeX, infoY, statLine, true);
+      // infoY += statsLineHeight + kStatsToProgressGap;
     }
 
     if (hasProgress) {
       constexpr int progressBarHeight = 4;
       constexpr int progressTopPad = 2;
-      const int progressBarWidth = centerCoverSlotRect.width;
+      
       const int filledWidth =
           std::clamp(static_cast<int>((progressPercent / 100.0f) * progressBarWidth), 0, progressBarWidth);
       char progressLabel[16];
       snprintf(progressLabel, sizeof(progressLabel), "%.0f%%", progressPercent);
-      const int progressLabelW = renderer.getTextWidth(UI_10_FONT_ID, progressLabel, EpdFontFamily::BOLD);
-      renderer.drawText(UI_10_FONT_ID, textCenterX - progressLabelW / 2, infoY + progressTopPad, progressLabel, true,
-                        EpdFontFamily::BOLD);
-      const int progressBarX = textCenterX - progressBarWidth / 2;
+      const int progressLabelW = renderer.getTextWidth(SMALL_FONT_ID, progressLabel);
+      const int progressLabelX = textCenterX + progressBarWidth / 2 - 20;
+      renderer.drawText(SMALL_FONT_ID, progressLabelX, infoY + progressTopPad, progressLabel, true);
+      const int progressBarX = textCenterX - progressBarWidth / 2 + 4;
       const int progressBarY = infoY + progressTopPad + progressLineHeight + 2;
       renderer.drawRect(progressBarX, progressBarY, progressBarWidth, progressBarHeight, true);
       if (filledWidth > 0) {
@@ -440,85 +436,67 @@ void LyraCarouselTheme::drawButtonMenu(GfxRenderer& renderer, Rect rect, int but
                                        const std::function<std::string(int index)>& buttonLabel,
                                        const std::function<UIIcon(int index)>& rowIcon) const {
   if (buttonCount <= 0) return;
-  // Rect is retained by the BaseTheme interface; this carousel menu anchors to the screen bottom.
 
-  const MenuLayoutMetrics metrics = computeMenuLayout(renderer, buttonCount);
+  const MenuLayoutMetrics metrics = computeMenuLayout(renderer, rect, buttonCount);
 
   for (int i = 0; i < buttonCount; ++i) {
-    const int tileX = i * metrics.tileW;
+    const int tileX = metrics.tileX + i * metrics.tileW;
     const int iconX = tileX + (metrics.tileW - kMenuIconSize) / 2;
-    const int iconY = metrics.rowY + kMenuIconPad;
+    const int iconY = metrics.rowY + kMenuRowDrop;
 
     const bool selected = (selectedIndex == i);
-    if (selected) {
-      const int highlightSize = kMenuIconSize + 2 * kHighlightPad;
-      const int highlightY = metrics.rowY + (metrics.tileH - highlightSize) / 2;
-      renderer.fillRoundedRect(iconX - kHighlightPad, highlightY, highlightSize, highlightSize, kCornerRadius,
-                               Color::Black);
-    }
 
     if (rowIcon != nullptr) {
       const UIIcon icon = rowIcon(i);
-      if (icon == UIIcon::BookmarkIcon) {
-        drawMenuBookmarkIcon(renderer, iconX, iconY, selected);
-      } else {
-        const uint8_t* bmp = iconForName(icon, kMenuIconSize);
-        if (bmp != nullptr) {
-          if (selected)
-            renderer.drawIconInverted(bmp, iconX, iconY, kMenuIconSize, kMenuIconSize);
-          else
-            renderer.drawIcon(bmp, iconX, iconY, kMenuIconSize, kMenuIconSize);
-        }
+      const uint8_t* bmp = iconForName(icon, kMenuIconSize);
+      if (bmp != nullptr) {
+        renderer.drawIcon(bmp, iconX, iconY, kMenuIconSize, kMenuIconSize);
       }
+    }
+
+    if (selected) {
+      const int highlightSize = kMenuIconSize + kHighlightPad;
+      renderer.drawRoundedRect(iconX - kHighlightPad / 2, iconY - kMenuRowDrop / 2, highlightSize, highlightSize, 2,
+                               kHighlightCornerRadius, true);
     }
   }
 
-  renderer.fillRect(0, metrics.labelY, renderer.getScreenWidth(), metrics.labelLineHeight, false);
+  renderer.fillRect(metrics.tileX, metrics.labelY - 6, metrics.bandWidth, metrics.labelLineHeight, false);
   if (selectedIndex >= 0 && selectedIndex < buttonCount && buttonLabel != nullptr) {
     const std::string labelStr = buttonLabel(selectedIndex);
-    const auto centeredLabel =
-        renderer.truncatedText(kMenuLabelFontId, labelStr.c_str(), renderer.getScreenWidth() - 40);
+    const auto centeredLabel = renderer.truncatedText(kMenuLabelFontId, labelStr.c_str(), metrics.bandWidth - 40);
     const int labelWidth = renderer.getTextWidth(kMenuLabelFontId, centeredLabel.c_str(), EpdFontFamily::REGULAR);
-    renderer.drawText(kMenuLabelFontId, (renderer.getScreenWidth() - labelWidth) / 2, metrics.labelY + 2,
+    renderer.drawText(kMenuLabelFontId, metrics.tileX + (metrics.bandWidth - labelWidth) / 2, metrics.labelY,
                       centeredLabel.c_str(), true, EpdFontFamily::REGULAR);
   }
 }
 
-void LyraCarouselTheme::drawButtonMenuSelectionOverlay(const GfxRenderer& renderer, int buttonCount, int selectedIndex,
+void LyraCarouselTheme::drawButtonMenuSelectionOverlay(const GfxRenderer& renderer, Rect rect, int buttonCount,
+                                                       int selectedIndex,
                                                        const std::function<std::string(int index)>& buttonLabel,
                                                        const std::function<UIIcon(int index)>& rowIcon) const {
   if (buttonCount <= 0 || selectedIndex < 0 || selectedIndex >= buttonCount) return;
 
-  const MenuLayoutMetrics metrics = computeMenuLayout(renderer, buttonCount);
+  const MenuLayoutMetrics metrics = computeMenuLayout(renderer, rect, buttonCount);
 
-  const int tileX = selectedIndex * metrics.tileW;
+  const int tileX = metrics.tileX + selectedIndex * metrics.tileW;
   const int iconX = tileX + (metrics.tileW - kMenuIconSize) / 2;
-  const int iconY = metrics.rowY + kMenuIconPad;
-  const int highlightSize = kMenuIconSize + 2 * kHighlightPad;
-  const int highlightY = metrics.rowY + (metrics.tileH - highlightSize) / 2;
+  const int iconY = metrics.rowY + kMenuRowDrop;
+  const int highlightSize = kMenuIconSize + kHighlightPad;
 
-  renderer.fillRoundedRect(iconX - kHighlightPad, highlightY, highlightSize, highlightSize, kCornerRadius,
-                           Color::Black);
+  renderer.drawRoundedRect(iconX - kHighlightPad / 2, iconY - kMenuRowDrop / 2, highlightSize, highlightSize, 2,
+                           kHighlightCornerRadius, true);
 
-  if (rowIcon != nullptr) {
-    const UIIcon icon = rowIcon(selectedIndex);
-    if (icon == UIIcon::BookmarkIcon) {
-      drawMenuBookmarkIcon(renderer, iconX, iconY, true);
-    } else {
-      const uint8_t* bmp = iconForName(icon, kMenuIconSize);
-      if (bmp != nullptr) {
-        renderer.drawIconInverted(bmp, iconX, iconY, kMenuIconSize, kMenuIconSize);
-      }
-    }
-  }
-
-  renderer.fillRect(0, metrics.labelY, renderer.getScreenWidth(), metrics.labelLineHeight, false);
+  // Cached carousel frames were built with selectedIndex=-1 (no label drawn),
+  // so the label row is blank in the base image. Paint the selected item's
+  // label here as part of the overlay; without this, navigating into the
+  // button menu row leaves the label area empty.
   if (buttonLabel != nullptr) {
+    renderer.fillRect(metrics.tileX, metrics.labelY, metrics.bandWidth, metrics.labelLineHeight, false);
     const std::string labelStr = buttonLabel(selectedIndex);
-    const auto centeredLabel =
-        renderer.truncatedText(kMenuLabelFontId, labelStr.c_str(), renderer.getScreenWidth() - 40);
+    const auto centeredLabel = renderer.truncatedText(kMenuLabelFontId, labelStr.c_str(), metrics.bandWidth - 40);
     const int labelWidth = renderer.getTextWidth(kMenuLabelFontId, centeredLabel.c_str(), EpdFontFamily::REGULAR);
-    renderer.drawText(kMenuLabelFontId, (renderer.getScreenWidth() - labelWidth) / 2, metrics.labelY + 2,
+    renderer.drawText(kMenuLabelFontId, metrics.tileX + (metrics.bandWidth - labelWidth) / 2, metrics.labelY + 2,
                       centeredLabel.c_str(), true, EpdFontFamily::REGULAR);
   }
 }

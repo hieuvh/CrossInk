@@ -29,7 +29,7 @@ constexpr ThemeMetrics values = {.batteryWidth = 16,
                                  .homeRecentBooksCount = 3,
                                  .homeContinueReadingInMenu = false,
                                  .homeMenuTopOffset = 16,
-                                 .buttonHintsHeight = 40,
+                                 .buttonHintsHeight = 32,
                                  .sideButtonHintsWidth = 30,
                                  .progressBarHeight = 16,
                                  .progressBarMarginTop = 1,
@@ -65,7 +65,9 @@ class LyraCarouselTheme : public LyraTheme {
                       const std::function<std::string(int index)>& buttonLabel,
                       const std::function<UIIcon(int index)>& rowIcon) const override;
   // LyraTheme has no virtual overlay hook; this is a carousel-only helper.
-  void drawButtonMenuSelectionOverlay(const GfxRenderer& renderer, int buttonCount, int selectedIndex,
+  // Pass the same rect used for drawButtonMenu so the overlay lands on the
+  // exact tile coordinates the base image was rendered with.
+  void drawButtonMenuSelectionOverlay(const GfxRenderer& renderer, Rect rect, int buttonCount, int selectedIndex,
                                       const std::function<std::string(int index)>& buttonLabel,
                                       const std::function<UIIcon(int index)>& rowIcon) const;
   void drawCarouselBorder(GfxRenderer& renderer, Rect coverRect, const std::vector<RecentBook>& recentBooks,

@@ -17,7 +17,7 @@
 // are appended after the built-in fonts. Otherwise only built-in fonts are listed.
 inline SettingInfo buildFontFamilySetting(const SdCardFontRegistry* registry) {
   // Built-in font labels (StrId)
-  std::vector<StrId> enumValues = {StrId::STR_LEXEND_DECA, StrId::STR_BITTER, StrId::STR_CHAREINK};
+  std::vector<StrId> enumValues = {StrId::STR_LEXEND_DECA, StrId::STR_BITTER, StrId::STR_QUICKSAND};
   // Runtime string labels for SD card fonts
   std::vector<std::string> enumStringValues;
 
@@ -40,7 +40,7 @@ inline SettingInfo buildFontFamilySetting(const SdCardFontRegistry* registry) {
   if (sdFontCount > 0) {
     allStringValues.push_back(I18N.get(StrId::STR_LEXEND_DECA));
     allStringValues.push_back(I18N.get(StrId::STR_BITTER));
-    allStringValues.push_back(I18N.get(StrId::STR_CHAREINK));
+    allStringValues.push_back(I18N.get(StrId::STR_QUICKSAND));
     allStringValues.insert(allStringValues.end(), enumStringValues.begin(), enumStringValues.end());
   }
 
@@ -120,18 +120,37 @@ inline std::vector<SettingInfo> getSettingsList(const SdCardFontRegistry* regist
             {StrId::STR_PAGES_1, StrId::STR_PAGES_5, StrId::STR_PAGES_10, StrId::STR_PAGES_15, StrId::STR_PAGES_30},
             "refreshFrequency", StrId::STR_CAT_DISPLAY),
         SettingInfo::Enum(StrId::STR_UI_THEME, &CrossPointSettings::uiTheme,
-                          {StrId::STR_THEME_CLASSIC, StrId::STR_THEME_LYRA, StrId::STR_THEME_LYRA_EXTENDED,
-                           StrId::STR_THEME_ROUNDEDRAFF
-#if defined(CROSSINK_ENABLE_LYRA_CAROUSEL) && CROSSINK_ENABLE_LYRA_CAROUSEL
+                          {StrId::STR_THEME_CLASSIC, StrId::STR_THEME_LYRA, StrId::STR_THEME_LYRA_EXTENDED
                            ,
                            StrId::STR_THEME_LYRA_CAROUSEL
-#endif
                           },
                           "uiTheme", StrId::STR_CAT_DISPLAY),
         SettingInfo::Enum(StrId::STR_RECENT_BOOKS_VIEW, &CrossPointSettings::recentBooksView,
                           {StrId::STR_LIST_VIEW, StrId::STR_GRID_VIEW}, "recentBooksView", StrId::STR_CAT_DISPLAY),
         SettingInfo::Toggle(StrId::STR_SUNLIGHT_FADING_FIX, &CrossPointSettings::fadingFix, "fadingFix",
                             StrId::STR_CAT_DISPLAY),
+        SettingInfo::Toggle(StrId::STR_SHOW_BUTTON_HINTS, &CrossPointSettings::showButtonHints, "showButtonHints",
+                            StrId::STR_CAT_DISPLAY),
+
+        // --- Time ---
+        SettingInfo::Toggle(StrId::STR_SHOW_HEADER_CLOCK, &CrossPointSettings::showHeaderClock, "showHeaderClock",
+                            StrId::STR_CAT_TIME),
+        SettingInfo::Enum(StrId::STR_TIME_FORMAT, &CrossPointSettings::timeFormat,
+                          {StrId::STR_TIME_FORMAT_24H, StrId::STR_TIME_FORMAT_12H}, "timeFormat", StrId::STR_CAT_TIME),
+        SettingInfo::Enum(StrId::STR_TIMEZONE, &CrossPointSettings::utcOffsetIndex,
+                          {
+                              StrId::STR_TZ_UTC_M12, StrId::STR_TZ_UTC_M11, StrId::STR_TZ_UTC_M10,
+                              StrId::STR_TZ_UTC_M9,  StrId::STR_TZ_UTC_M8,  StrId::STR_TZ_UTC_M7,
+                              StrId::STR_TZ_UTC_M6,  StrId::STR_TZ_UTC_M5,  StrId::STR_TZ_UTC_M4,
+                              StrId::STR_TZ_UTC_M3,  StrId::STR_TZ_UTC_M2,  StrId::STR_TZ_UTC_M1,
+                              StrId::STR_TZ_UTC_0,
+                              StrId::STR_TZ_UTC_P1,  StrId::STR_TZ_UTC_P2,  StrId::STR_TZ_UTC_P3,
+                              StrId::STR_TZ_UTC_P4,  StrId::STR_TZ_UTC_P5,  StrId::STR_TZ_UTC_P6,
+                              StrId::STR_TZ_UTC_P7,  StrId::STR_TZ_UTC_P8,  StrId::STR_TZ_UTC_P9,
+                              StrId::STR_TZ_UTC_P10, StrId::STR_TZ_UTC_P11, StrId::STR_TZ_UTC_P12,
+                              StrId::STR_TZ_UTC_P13, StrId::STR_TZ_UTC_P14,
+                          },
+                          "utcOffsetIndex", StrId::STR_CAT_TIME),
 
         // --- Reader ---
         // Built-in font-family entry. Replaced per-call with a registry-aware
@@ -140,7 +159,7 @@ inline std::vector<SettingInfo> getSettingsList(const SdCardFontRegistry* regist
                           {
                               StrId::STR_LEXEND_DECA,
                               StrId::STR_BITTER,
-                              StrId::STR_CHAREINK,
+                              StrId::STR_QUICKSAND,
                           },
                           "fontFamily", StrId::STR_CAT_READER),
         SettingInfo::Enum(StrId::STR_FONT_SIZE, &CrossPointSettings::fontSize,
@@ -153,15 +172,6 @@ inline std::vector<SettingInfo> getSettingsList(const SdCardFontRegistry* regist
 #endif
                               StrId::STR_MEDIUM,
                               StrId::STR_LARGE,
-#ifndef OMIT_XLARGE_FONT
-                              StrId::STR_X_LARGE,
-#endif
-#ifndef OMIT_TEENSY_FONT
-                              StrId::STR_TEENSY,
-#endif
-#ifndef OMIT_HUGE_FONT
-                              StrId::STR_HUGE,
-#endif
                           },
                           "fontSize", StrId::STR_CAT_READER),
         SettingInfo::Enum(StrId::STR_LINE_SPACING, &CrossPointSettings::lineSpacing,
@@ -188,10 +198,6 @@ inline std::vector<SettingInfo> getSettingsList(const SdCardFontRegistry* regist
                             "extraParagraphSpacing", StrId::STR_CAT_READER),
         SettingInfo::Toggle(StrId::STR_FORCE_PARAGRAPH_INDENTS, &CrossPointSettings::forceParagraphIndents,
                             "forceParagraphIndents", StrId::STR_CAT_READER),
-        SettingInfo::Toggle(StrId::STR_BIONIC_READING, &CrossPointSettings::bionicReadingEnabled,
-                            "bionicReadingEnabled", StrId::STR_CAT_READER),
-        SettingInfo::Toggle(StrId::STR_GUIDE_READING, &CrossPointSettings::guideReadingEnabled, "guideReadingEnabled",
-                            StrId::STR_CAT_READER),
         // --- Controls ---
         SettingInfo::Enum(StrId::STR_SIDE_BTN_LAYOUT, &CrossPointSettings::sideButtonLayout,
                           {StrId::STR_PREV_NEXT, StrId::STR_NEXT_PREV}, "sideButtonLayout", StrId::STR_CAT_CONTROLS),
@@ -284,9 +290,6 @@ inline std::vector<SettingInfo> getSettingsList(const SdCardFontRegistry* regist
                           StrId::STR_CUSTOMISE_STATUS_BAR),
         SettingInfo::Toggle(StrId::STR_BATTERY, &CrossPointSettings::statusBarBattery, "statusBarBattery",
                             StrId::STR_CUSTOMISE_STATUS_BAR),
-        SettingInfo::Enum(StrId::STR_XTC_STATUS_BAR, &CrossPointSettings::xtcStatusBarMode,
-                          {StrId::STR_HIDE, StrId::STR_BOTTOM, StrId::STR_TOP}, "xtcStatusBarMode",
-                          StrId::STR_CUSTOMISE_STATUS_BAR),
     };
     // Only show tilt page turn setting when the QMI8658 IMU is present (X3).
     if (halTiltSensor.isAvailable()) {

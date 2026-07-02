@@ -1,5 +1,7 @@
 #pragma once
 
+#include <EpdFontFamily.h>
+
 #include <cstddef>
 #include <cstdint>
 #include <functional>
@@ -110,13 +112,13 @@ constexpr ThemeMetrics values = {.batteryWidth = 15,
                                  .tabBarHeight = 50,
                                  .scrollBarWidth = 4,
                                  .scrollBarRightOffset = 5,
-                                 .homeTopPadding = 40,
+                                 .homeTopPadding = 32,
                                  .homeCoverHeight = 370,
                                  .homeCoverTileHeight = 370,
                                  .homeRecentBooksCount = 1,
                                  .homeContinueReadingInMenu = false,
                                  .homeMenuTopOffset = 10,
-                                 .buttonHintsHeight = 40,
+                                 .buttonHintsHeight = 32,
                                  .sideButtonHintsWidth = 30,
                                  .progressBarHeight = 16,
                                  .progressBarMarginTop = 1,
@@ -188,4 +190,27 @@ class BaseTheme {
   static constexpr int batteryPercentSpacing = 4;
   static void drawBatteryOutline(const GfxRenderer& renderer, int x, int y, int battWidth, int rectHeight);
   static void drawBatteryLightningBolt(const GfxRenderer& renderer, int boltX, int boltY);
+  // Draw a filled triangular arrow inside a `size x size` box anchored at (x, y).
+  // direction: 'L' / 'R' / 'U' / 'D'. Used by drawButtonHints to render ◀▶▲▼
+  // labels as actual icons instead of relying on Unicode glyphs in the font.
+  static void drawTriangleArrow(const GfxRenderer& renderer, int x, int y, int size, char direction);
+
+  // Parses a label that may carry a triangle (◀▶▲▼) at its leading or trailing
+  // edge — e.g. "◀ Back", "Next Page ▶", or just "◀". When found, the caller
+  // can render the triangle as a bitmap icon alongside the remaining text.
+  struct TriangleAffix {
+    char direction = '\0';   // 'L'/'R'/'U'/'D', or '\0' when no triangle present.
+    bool isLeading = false;  // true: triangle before text; false: triangle after text.
+    const char* textStart = nullptr;
+    size_t textLen = 0;      // length of the text portion (after stripping triangle + adjacent space).
+  };
+  static TriangleAffix parseTriangleAffix(const char* label);
+
+  // Render a list-row title at (x, y), substituting a bitmap triangle icon
+  // for a leading/trailing ◀▶▲▼ glyph in `label`. The text portion is
+  // truncated to fit within (maxWidth - icon - gap). Returns the total
+  // width drawn so callers can size dimmed-row dither overlays.
+  static int drawListRowTitle(const GfxRenderer& renderer, int x, int y, int fontId,
+                              const std::string& label, int maxWidth, bool foreground,
+                              EpdFontFamily::Style family = EpdFontFamily::REGULAR);
 };

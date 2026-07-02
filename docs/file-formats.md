@@ -183,7 +183,7 @@ import std.core;
 
 // === Configuration ===
 #define EXPECTED_MAGIC 0x535843FF
-#define EXPECTED_VERSION 36
+#define EXPECTED_VERSION 37
 #define MAX_STRING_LENGTH 65535
 #define MAX_WORD_STRING_LENGTH 4096
 #define FOOTNOTE_NUMBER_LEN 32
@@ -377,8 +377,6 @@ struct SectionBin {
     bool hyphenationEnabled;
     bool embeddedStyle;
     u8 imageRendering;
-    bool bionicReadingEnabled;
-    bool guideReadingEnabled;
     u16 pageCount;
     u32 lutOffset;
     u32 anchorMapOffset;

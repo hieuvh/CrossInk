@@ -307,6 +307,7 @@
     <button class="save-btn" id="saveBtn" onclick="saveSettings()">Save Settings</button>
   </div>
 
+  <div id="time-container"></div>
   <div id="wifi-container"></div>
   <div id="opds-container"></div>
 
@@ -710,6 +711,81 @@
     } catch (e) {
       showMessage('Error: ' + e.message, true);
     }
+  }
+
+  // --- Time Management ---
+  // Lets the user view the device's local time, push the browser's wall-clock
+  // value, or run a synchronous NTP sync. The /api/time/sync request can take
+  // 5-13 seconds while the device connects Wi-Fi and queries NTP, so the UI
+  // shows a "Syncing..." hint until the response returns.
+  let timeRefreshTimer = null;
+
+  function renderTimeSection() {
+    const container = document.getElementById('time-container');
+    container.innerHTML =
+      '<div class="card"><h2>Time</h2>' +
+        '<div class="setting-row">' +
+          '<span class="setting-name">Device time</span>' +
+          '<span class="setting-control" id="device-time" style="font-variant-numeric:tabular-nums;">&mdash;</span>' +
+        '</div>' +
+        '<div class="setting-row">' +
+          '<span class="setting-name">Set to my browser\'s time</span>' +
+          '<span class="setting-control"><button class="btn-small btn-add" id="btn-set-browser-time" type="button">Set</button></span>' +
+        '</div>' +
+        '<div class="setting-row">' +
+          '<span class="setting-name">Sync via NTP <span id="sync-result" style="color:var(--label-color);font-weight:normal;font-size:0.9em;margin-left:6px;"></span></span>' +
+          '<span class="setting-control"><button class="btn-small btn-add" id="btn-sync-ntp" type="button">Sync</button></span>' +
+        '</div>' +
+      '</div>';
+
+    document.getElementById('btn-set-browser-time').addEventListener('click', async function() {
+      const fd = new FormData();
+      fd.append('epochMs', String(Date.now()));
+      try {
+        const r = await fetch('/api/time', { method: 'POST', body: fd });
+        if (!r.ok) throw new Error('HTTP ' + r.status);
+        showMessage('Device time updated.', false);
+      } catch (e) {
+        showMessage('Failed to set time: ' + e.message, true);
+      }
+      refreshTime();
+    });
+
+    document.getElementById('btn-sync-ntp').addEventListener('click', async function() {
+      const out = document.getElementById('sync-result');
+      const btn = document.getElementById('btn-sync-ntp');
+      out.textContent = 'Syncing...';
+      btn.disabled = true;
+      try {
+        const r = await fetch('/api/time/sync', { method: 'POST' });
+        const j = await r.json();
+        if (j.ok) {
+          out.textContent = 'Synced (epoch ' + j.epoch + ')';
+        } else {
+          out.textContent = 'Sync failed';
+        }
+      } catch (e) {
+        out.textContent = 'Request failed';
+      }
+      btn.disabled = false;
+      refreshTime();
+    });
+  }
+
+  async function refreshTime() {
+    try {
+      const r = await fetch('/api/time');
+      if (!r.ok) return;
+      const j = await r.json();
+      const el = document.getElementById('device-time');
+      if (el) el.textContent = j.hasTime ? j.local : '(not set)';
+    } catch (e) { /* silent */ }
+  }
+
+  renderTimeSection();
+  refreshTime();
+  if (!timeRefreshTimer) {
+    timeRefreshTimer = setInterval(refreshTime, 5000);
   }
 
   loadWifiNetworks();

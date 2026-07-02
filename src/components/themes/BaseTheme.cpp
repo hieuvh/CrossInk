@@ -10,11 +10,13 @@
 #include <cstdint>
 #include <string>
 
+#include "CrossPointSettings.h"
 #include "I18n.h"
 #include "RecentBooksStore.h"
 #include "activities/reader/BookReadingStats.h"
 #include "components/UITheme.h"
 #include "fontIds.h"
+#include "services/TimeService.h"
 
 // Internal constants
 namespace {
@@ -36,6 +38,113 @@ void BaseTheme::drawBatteryOutline(const GfxRenderer& renderer, int x, int y, in
   renderer.drawPixel(x + battWidth - 1, y + 3);
   renderer.drawPixel(x + battWidth - 1, y + rectHeight - 4);
   renderer.drawLine(x + battWidth - 0, y + 4, x + battWidth - 0, y + rectHeight - 5);
+}
+
+void BaseTheme::drawTriangleArrow(const GfxRenderer& renderer, int x, int y, int size, char direction) {
+  if (size <= 0) return;
+  for (int i = 0; i < size; ++i) {
+    const int rowsFromEdge = std::min(i, size - 1 - i);
+    const int len = std::min(size, rowsFromEdge * 2 + 1);
+    if (len <= 0) continue;
+    switch (direction) {
+      case 'R': renderer.fillRect(x, y + i, len, 1, true); break;
+      case 'L': renderer.fillRect(x + size - len, y + i, len, 1, true); break;
+      case 'D': renderer.fillRect(x + i, y, 1, len, true); break;
+      case 'U': renderer.fillRect(x + i, y + size - len, 1, len, true); break;
+      default: return;
+    }
+  }
+}
+
+namespace {
+// UTF-8 byte sequences for ◀ ▶ ▲ ▼ (U+25C0 / U+25B6 / U+25B2 / U+25BC).
+struct TriangleGlyph {
+  const char* utf8;
+  char dir;
+};
+constexpr TriangleGlyph kTriangleGlyphs[] = {
+    {"\xE2\x97\x80", 'L'},
+    {"\xE2\x96\xB6", 'R'},
+    {"\xE2\x96\xB2", 'U'},
+    {"\xE2\x96\xBC", 'D'},
+};
+constexpr size_t kTriangleUtf8Bytes = 3;
+}  // namespace
+
+int BaseTheme::drawListRowTitle(const GfxRenderer& renderer, int x, int y, int fontId,
+                                const std::string& label, int maxWidth, bool foreground,
+                                EpdFontFamily::Style family) {
+  const TriangleAffix tri = parseTriangleAffix(label.c_str());
+  if (tri.direction == '\0') {
+    // Plain text — same as before.
+    const std::string truncated = renderer.truncatedText(fontId, label.c_str(), maxWidth, family);
+    renderer.drawText(fontId, x, y, truncated.c_str(), foreground, family);
+    return renderer.getTextWidth(fontId, truncated.c_str(), family);
+  }
+
+  constexpr int kArrowSize = 10;
+  constexpr int kIconGap = 4;
+  const int lineH = renderer.getLineHeight(fontId);
+  const int iconY = y + std::max(0, (lineH - kArrowSize) / 2);
+
+  if (tri.textLen == 0) {
+    // Pure triangle — just the icon at the title start position.
+    drawTriangleArrow(renderer, x, iconY, kArrowSize, tri.direction);
+    return kArrowSize;
+  }
+
+  // Triangle + text — keep the natural reading order (icon then text for leading,
+  // text then icon for trailing) and truncate the text portion to fit.
+  const std::string fullText(tri.textStart, tri.textLen);
+  const int availTextWidth = std::max(0, maxWidth - kArrowSize - kIconGap);
+  const std::string text = renderer.truncatedText(fontId, fullText.c_str(), availTextWidth, family);
+  const int textWidth = renderer.getTextWidth(fontId, text.c_str(), family);
+
+  if (tri.isLeading) {
+    drawTriangleArrow(renderer, x, iconY, kArrowSize, tri.direction);
+    renderer.drawText(fontId, x + kArrowSize + kIconGap, y, text.c_str(), foreground, family);
+  } else {
+    renderer.drawText(fontId, x, y, text.c_str(), foreground, family);
+    drawTriangleArrow(renderer, x + textWidth + kIconGap, iconY, kArrowSize, tri.direction);
+  }
+  return kArrowSize + kIconGap + textWidth;
+}
+
+BaseTheme::TriangleAffix BaseTheme::parseTriangleAffix(const char* label) {
+  TriangleAffix r;
+  r.textStart = label;
+  if (label == nullptr) return r;
+  const size_t len = strlen(label);
+  if (len == 0) return r;
+
+  // Leading triangle? Strip it (3 bytes) and any single space that follows.
+  for (const auto& g : kTriangleGlyphs) {
+    if (len >= kTriangleUtf8Bytes && strncmp(label, g.utf8, kTriangleUtf8Bytes) == 0) {
+      r.direction = g.dir;
+      r.isLeading = true;
+      size_t off = kTriangleUtf8Bytes;
+      while (off < len && label[off] == ' ') ++off;
+      r.textStart = label + off;
+      r.textLen = len - off;
+      return r;
+    }
+  }
+  // Trailing triangle? Last 3 bytes match, strip trailing whitespace ahead of it.
+  if (len >= kTriangleUtf8Bytes) {
+    const char* tail = label + len - kTriangleUtf8Bytes;
+    for (const auto& g : kTriangleGlyphs) {
+      if (strncmp(tail, g.utf8, kTriangleUtf8Bytes) == 0) {
+        r.direction = g.dir;
+        r.isLeading = false;
+        size_t textEnd = len - kTriangleUtf8Bytes;
+        while (textEnd > 0 && label[textEnd - 1] == ' ') --textEnd;
+        r.textStart = label;
+        r.textLen = textEnd;
+        return r;
+      }
+    }
+  }
+  return r;
 }
 
 void BaseTheme::drawBatteryLightningBolt(const GfxRenderer& renderer, int boltX, int boltY) {
@@ -78,7 +187,7 @@ void BaseTheme::fillBatteryIcon(const GfxRenderer& renderer, Rect rect, uint16_t
 }
 
 void BaseTheme::drawBatteryLeft(const GfxRenderer& renderer, Rect rect, const bool showPercentage) const {
-  // Left aligned: icon on left, percentage on right (reader mode)
+  // Left aligned: icon on left, percentage on right (reader mode).
   const uint16_t percentage = powerManager.getBatteryPercentage();
   const int y = rect.y + 6;
 
@@ -93,8 +202,8 @@ void BaseTheme::drawBatteryLeft(const GfxRenderer& renderer, Rect rect, const bo
 }
 
 void BaseTheme::drawBatteryRight(const GfxRenderer& renderer, Rect rect, const bool showPercentage) const {
-  // Right aligned: percentage on left, icon on right (UI headers)
-  // rect.x is already positioned for the icon (drawHeader calculated it)
+  // Right aligned: percentage on left, icon on right (UI headers).
+  // rect.x is already positioned for the icon (drawHeader calculated it).
   const uint16_t percentage = powerManager.getBatteryPercentage();
   const int y = rect.y + 6;
 
@@ -135,6 +244,7 @@ void BaseTheme::drawProgressBar(const GfxRenderer& renderer, Rect rect, const si
 
 void BaseTheme::drawButtonHints(GfxRenderer& renderer, const char* btn1, const char* btn2, const char* btn3,
                                 const char* btn4, const bool allowInvertedText) const {
+  if (!SETTINGS.showButtonHints) return;
   const GfxRenderer::Orientation orig_orientation = renderer.getOrientation();
   const bool invertText = allowInvertedText && orig_orientation == GfxRenderer::Orientation::PortraitInverted;
   renderer.setOrientation(invertText ? GfxRenderer::Orientation::PortraitInverted : GfxRenderer::Orientation::Portrait);
@@ -143,7 +253,8 @@ void BaseTheme::drawButtonHints(GfxRenderer& renderer, const char* btn1, const c
   constexpr int buttonWidth = 106;
   constexpr int buttonHeight = BaseMetrics::values.buttonHintsHeight;
   const int buttonY = invertText ? pageHeight : BaseMetrics::values.buttonHintsHeight;
-  constexpr int textYOffset = 7;  // Distance from top of button to text baseline
+  const int textHeight = renderer.getTextHeight(UI_10_FONT_ID);
+  const int textYOffset = (buttonHeight - textHeight) / 2;
   // X3 has wider screen in portrait (528 vs 480), use more spacing
   constexpr int x4ButtonPositions[] = {25, 130, 245, 350};
   constexpr int x3ButtonPositions[] = {38, 154, 268, 384};
@@ -156,9 +267,35 @@ void BaseTheme::drawButtonHints(GfxRenderer& renderer, const char* btn1, const c
       const int x = buttonPositions[invertText ? 3 - i : i];
       renderer.fillRect(x, pageHeight - buttonY, buttonWidth, buttonHeight, false);
       renderer.drawRect(x, pageHeight - buttonY, buttonWidth, buttonHeight);
-      const int textWidth = renderer.getTextWidth(UI_10_FONT_ID, labels[i]);
-      const int textX = x + (buttonWidth - 1 - textWidth) / 2;
-      renderer.drawText(UI_10_FONT_ID, textX, pageHeight - buttonY + textYOffset, labels[i]);
+      const TriangleAffix tri = parseTriangleAffix(labels[i]);
+      if (tri.direction != '\0' && tri.textLen == 0) {
+        // Pure triangle label — center the icon.
+        constexpr int kArrowSize = 12;
+        const int iconX = x + (buttonWidth - kArrowSize) / 2;
+        const int iconY = pageHeight - buttonY + (buttonHeight - kArrowSize) / 2;
+        drawTriangleArrow(renderer, iconX, iconY, kArrowSize, tri.direction);
+      } else if (tri.direction != '\0') {
+        // Triangle + text combo — center icon-and-text as a group inside the button.
+        constexpr int kArrowSize = 10;
+        constexpr int kIconGap = 4;
+        const std::string text(tri.textStart, tri.textLen);
+        const int textWidth = renderer.getTextWidth(UI_10_FONT_ID, text.c_str());
+        const int groupWidth = kArrowSize + kIconGap + textWidth;
+        int curX = x + (buttonWidth - groupWidth) / 2;
+        const int iconY = pageHeight - buttonY + (buttonHeight - kArrowSize) / 2;
+        const int textY = pageHeight - buttonY + textYOffset;
+        if (tri.isLeading) {
+          drawTriangleArrow(renderer, curX, iconY, kArrowSize, tri.direction);
+          renderer.drawText(UI_10_FONT_ID, curX + kArrowSize + kIconGap, textY, text.c_str());
+        } else {
+          renderer.drawText(UI_10_FONT_ID, curX, textY, text.c_str());
+          drawTriangleArrow(renderer, curX + textWidth + kIconGap, iconY, kArrowSize, tri.direction);
+        }
+      } else {
+        const int textWidth = renderer.getTextWidth(UI_10_FONT_ID, labels[i]);
+        const int textX = x + (buttonWidth - 1 - textWidth) / 2;
+        renderer.drawText(UI_10_FONT_ID, textX, pageHeight - buttonY + textYOffset, labels[i]);
+      }
     }
   }
 
@@ -306,21 +443,24 @@ void BaseTheme::drawList(const GfxRenderer& renderer, Rect rect, int itemCount, 
       }
     }
 
-    auto itemName = rowTitle(i);
-    auto font = UI_10_FONT_ID;
-    auto item = renderer.truncatedText(font, itemName.c_str(), rowTextWidth);
+    const std::string itemName = rowTitle(i);
+    const auto font = UI_10_FONT_ID;
+    const int tx = rect.x + BaseMetrics::values.contentSidePadding;
     if (isHeader && isHeader(i)) {
-      renderer.drawText(font, rect.x + BaseMetrics::values.contentSidePadding, itemY, item.c_str(), true,
-                        EpdFontFamily::BOLD);
+      // Section headers: do NOT route through drawListRowTitle (no triangle
+      // detection needed for section labels, and routing them through there
+      // caused first-char rendering corruption on multi-byte Vietnamese
+      // strings — first letter of "Giao diện", "Phông chữ", "Bố cục" etc.
+      // would render as blank or wrong glyph).
+      const auto item = renderer.truncatedText(font, itemName.c_str(), rowTextWidth);
+      renderer.drawText(font, tx, itemY, item.c_str(), true, EpdFontFamily::BOLD);
       continue;
     }
-    renderer.drawText(font, rect.x + BaseMetrics::values.contentSidePadding, itemY, item.c_str(), i != selectedIndex);
+    const int titleWidth = drawListRowTitle(renderer, tx, itemY, font, itemName, rowTextWidth, i != selectedIndex);
 
     // Apply checkerboard dither to create gray text effect for dimmed items
     if (rowDimmed && rowDimmed(i) && i != selectedIndex) {
-      const int titleWidth = renderer.getTextWidth(font, item.c_str());
       const int lineH = renderer.getLineHeight(font);
-      const int tx = rect.x + BaseMetrics::values.contentSidePadding;
       for (int py = itemY; py < itemY + lineH; py++)
         for (int px = tx; px < tx + titleWidth; px++)
           if ((px + py) % 2 == 0) renderer.drawPixel(px, py, false);
@@ -352,6 +492,16 @@ void BaseTheme::drawHeader(const GfxRenderer& renderer, Rect rect, const char* t
   constexpr int maxBatteryWidth = 80;
   renderer.fillRect(rect.x + rect.width - maxBatteryWidth, rect.y + 5, maxBatteryWidth,
                     BaseMetrics::values.batteryHeight + 10, false);
+
+  // Header clock on the left, drawn on every screen that uses drawHeader
+  // (not just Home). Gated on SETTINGS.showHeaderClock.
+  if (SETTINGS.showHeaderClock) {
+    char clockBuf[16];
+    if (TimeService::instance().formatLocal(clockBuf, sizeof(clockBuf))) {
+      renderer.drawText(SMALL_FONT_ID, rect.x + BaseMetrics::values.contentSidePadding,
+                        rect.y + 5, clockBuf, true);
+    }
+  }
 
   const bool showBatteryPercentage =
       SETTINGS.hideBatteryPercentage != CrossPointSettings::HIDE_BATTERY_PERCENTAGE::HIDE_ALWAYS;
