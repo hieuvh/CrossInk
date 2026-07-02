@@ -512,9 +512,10 @@ void SettingsActivity::render(RenderLock&&) {
   if (useWindowedUpdate) {
     renderer.displayWindow(0, yMin, pageWidth, yHeight);
   } else {
-    renderer.displayBuffer();
     if (SETTINGS.textAntiAliasing) {
       UIRenderUtils::renderUIAntiAliased(renderer, drawSettingsContent);
+    } else {
+      renderer.displayBuffer();
     }
   }
 

@@ -1287,10 +1287,10 @@ void HomeActivity::render(RenderLock&&) {
 
   renderer.clearScreen();
   drawHomeContent();
-  renderer.displayBuffer();
-
   if (SETTINGS.textAntiAliasing) {
     UIRenderUtils::renderUIAntiAliased(renderer, drawHomeContent);
+  } else {
+    renderer.displayBuffer();
   }
 
   if (!firstRenderDone) {

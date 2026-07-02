@@ -59,7 +59,7 @@ void HalDisplay::displayBuffer(HalDisplay::RefreshMode mode, bool turnOffScreen)
 
   if (mode == RefreshMode::FAST_REFRESH) {
     consecutiveFastRefreshes++;
-    if (consecutiveFastRefreshes >= 8) {
+    if (consecutiveFastRefreshes >= kMaxFastRefreshes) {
       mode = RefreshMode::HALF_REFRESH;
       consecutiveFastRefreshes = 0;
     }
@@ -76,7 +76,7 @@ void HalDisplay::displayBuffer(HalDisplay::RefreshMode mode, bool turnOffScreen)
 
 void HalDisplay::displayWindow(uint16_t x, uint16_t y, uint16_t w, uint16_t h, bool turnOffScreen) {
   consecutiveFastRefreshes++;
-  if (consecutiveFastRefreshes >= 8) {
+  if (consecutiveFastRefreshes >= kMaxFastRefreshes) {
     displayBuffer(RefreshMode::HALF_REFRESH, turnOffScreen);
   } else {
     HalSpiBus::Lock spiLock;
