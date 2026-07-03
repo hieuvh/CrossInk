@@ -79,16 +79,20 @@ inline void displayWithRefreshCycle(const GfxRenderer& renderer, int& pagesUntil
 }
 
 // Grayscale anti-aliasing pass. Renders content twice (LSB + MSB) to build
-// the grayscale buffer. Only the content callback is re-rendered — status bars
-// and other overlays should be drawn before calling this.
+// the grayscale buffer, then re-renders the BW frame to restore the
+// framebuffer as the differential-refresh baseline.
+//
+// renderFn draws only the content to anti-alias. renderBwFrame must reproduce
+// the complete frame that displayBuffer put on screen — status bar and other
+// overlays included — or the missing parts ghost on the next fast refresh.
 //
 // shouldAbort is checked at the two cheapest bail points (before clearScreen
 // and between LSB/MSB passes) so rapid page turns can skip the ~1-2s grayscale
 // upgrade. Pass a no-op (e.g. [] { return false; }) to disable cancellation.
 //
 // Kept as a template to avoid std::function overhead; instantiated once per reader type.
-template <typename RenderFn, typename AbortFn>
-void renderAntiAliased(GfxRenderer& renderer, RenderFn&& renderFn, AbortFn&& shouldAbort) {
+template <typename RenderFn, typename BwFrameFn, typename AbortFn>
+void renderAntiAliased(GfxRenderer& renderer, RenderFn&& renderFn, BwFrameFn&& renderBwFrame, AbortFn&& shouldAbort) {
   if (shouldAbort()) {
     return;
   }
@@ -101,7 +105,7 @@ void renderAntiAliased(GfxRenderer& renderer, RenderFn&& renderFn, AbortFn&& sho
   if (shouldAbort()) {
     renderer.setRenderMode(GfxRenderer::BW);
     renderer.clearScreen();
-    renderFn();
+    renderBwFrame();
     renderer.cleanupGrayscaleWithFrameBuffer();
     return;
   }
@@ -118,14 +122,8 @@ void renderAntiAliased(GfxRenderer& renderer, RenderFn&& renderFn, AbortFn&& sho
   renderer.setRenderMode(GfxRenderer::BW);
 
   renderer.clearScreen();
-  renderFn();
+  renderBwFrame();
   renderer.cleanupGrayscaleWithFrameBuffer();
-}
-
-// Convenience overload — no cancellation.
-template <typename RenderFn>
-void renderAntiAliased(GfxRenderer& renderer, RenderFn&& renderFn) {
-  renderAntiAliased(renderer, std::forward<RenderFn>(renderFn), [] { return false; });
 }
 
 }  // namespace ReaderUtils

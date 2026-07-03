@@ -1172,7 +1172,7 @@ void HomeActivity::loop() {
   }
 }
 
-void HomeActivity::render(RenderLock&&) {
+void HomeActivity::render(RenderLock&& lock) {
   const auto& metrics = UITheme::getInstance().getMetrics();
   const auto pageWidth = renderer.getScreenWidth();
   const auto pageHeight = renderer.getScreenHeight();
@@ -1196,6 +1196,18 @@ void HomeActivity::render(RenderLock&&) {
     }
 
     if (frameBuffer && slotIdx >= 0 && carouselFrames[slotIdx]) {
+      // A differential FAST refresh cannot drive a new cover cleanly on top of
+      // the old one — the previous image ghosts through within a few swaps.
+      // When the centered book changes, blank the carousel band and display it
+      // first, then draw the new frame (the same double-refresh technique the
+      // reader uses for image pages).
+      const bool coverSwapped =
+          firstRenderDone && inCarouselRow && lastRenderedCarouselIdx >= 0 && centerIdx != lastRenderedCarouselIdx;
+      if (coverSwapped) {
+        renderer.fillRect(0, metrics.homeTopPadding, pageWidth, metrics.homeCoverTileHeight, false);
+        renderer.displayBuffer(HalDisplay::FAST_REFRESH);
+      }
+      lastRenderedCarouselIdx = centerIdx;
       memcpy(frameBuffer, carouselFrames[slotIdx], renderer.getBufferSize());
       // Sync the static pre-render index so drawRecentBookCover knows which book
       // is centered (used for cover buffer coordinate lookups inside the theme).
@@ -1232,16 +1244,17 @@ void HomeActivity::render(RenderLock&&) {
         }
       }
 
+      // First render after entering Home gets a differential refresh so screen
+      // transitions are fast and smooth without intense inverted flashing.
       renderer.displayBuffer();
       // E-ink refresh complete — pre-render the missing adjacent frame while idle.
       updateSlidingWindowCache(centerIdx, bookCount);
       // Defer thumbnail generation and cover loading until after the first E-ink
       // update so the screen is never blank while SD work is running.
-      if (!firstRenderDone) {
-        firstRenderDone = true;
-        requestUpdate();
-      } else if (!recentsLoaded && !recentsLoading) {
+      firstRenderDone = true;
+      if (!recentsLoaded && !recentsLoading) {
         recentsLoading = true;
+        lock.unlock();
         loadRecentCovers(metrics.homeCoverHeight);
       }
       return;
@@ -1249,17 +1262,26 @@ void HomeActivity::render(RenderLock&&) {
   }
 
   auto drawHomeContent = [&]() {
+    // The cover tile is image content and renders only in the BW pass. The
+    // cover snapshot is a raw copy of the full BW frame: restoring it during a
+    // grayscale pass would flag every white pixel as "drive to dark gray" and
+    // smear the whole screen, and re-snapshotting there would poison the cache
+    // with grayscale plane data.
+    const bool isBwPass = renderer.getRenderMode() == GfxRenderer::BW;
+
     // Restore previously snapshotted cover pixels to avoid re-reading from SD
     // when only the menu selection changed (cover bitmap is expensive to load).
-    bool bufferRestored = coverBufferStored && restoreCoverBuffer();
+    bool bufferRestored = isBwPass && coverBufferStored && restoreCoverBuffer();
 
     GUI.drawHeader(renderer, Rect{0, metrics.topPadding, pageWidth, metrics.homeTopPadding},
                    metrics.homeContinueReadingInMenu && !recentBooks.empty() ? recentBooks[0].title.c_str() : nullptr);
 
-    GUI.drawRecentBookCover(renderer, Rect{0, metrics.homeTopPadding, pageWidth, metrics.homeCoverTileHeight},
-                            recentBooks, selectorIndex, coverRendered, coverBufferStored, bufferRestored,
-                            std::bind(&HomeActivity::storeCoverBuffer, this),
-                            hasAnyBookStats(currentBookStats) ? &currentBookStats : nullptr, currentBookProgressPercent);
+    if (isBwPass) {
+      GUI.drawRecentBookCover(
+          renderer, Rect{0, metrics.homeTopPadding, pageWidth, metrics.homeCoverTileHeight}, recentBooks, selectorIndex,
+          coverRendered, coverBufferStored, bufferRestored, std::bind(&HomeActivity::storeCoverBuffer, this),
+          hasAnyBookStats(currentBookStats) ? &currentBookStats : nullptr, currentBookProgressPercent);
+    }
 
     auto menuItems = buildHomeMenuItems(hasOpdsServers, hasReadingStats, hasBookmarks);
 
@@ -1287,20 +1309,20 @@ void HomeActivity::render(RenderLock&&) {
 
   renderer.clearScreen();
   drawHomeContent();
+  // First render after entering Home gets a differential refresh so screen
+  // transitions are fast and smooth without intense inverted flashing.
+  renderer.displayBuffer();
   if (SETTINGS.textAntiAliasing) {
     UIRenderUtils::renderUIAntiAliased(renderer, drawHomeContent);
-  } else {
-    renderer.displayBuffer();
   }
+  // Keep the fast path's cover-swap detector in sync with what this full
+  // render just put on the panel.
+  lastRenderedCarouselIdx = getHighlightedBookIndex();
 
-  if (!firstRenderDone) {
-    firstRenderDone = true;
-    requestUpdate();
-    return;
-  }
-
+  firstRenderDone = true;
   if (!recentsLoaded && !recentsLoading) {
     recentsLoading = true;
+    lock.unlock();
     loadRecentCovers(metrics.homeCoverHeight);
   }
 

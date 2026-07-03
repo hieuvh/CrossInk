@@ -57,6 +57,10 @@ EInkDisplay::RefreshMode convertRefreshMode(HalDisplay::RefreshMode mode) {
 void HalDisplay::displayBuffer(HalDisplay::RefreshMode mode, bool turnOffScreen) {
   HalSpiBus::Lock spiLock;
 
+  // A full buffer display rewrites BW RAM and re-syncs RED RAM, so the
+  // controller RAM is coherent again after any grayscale display.
+  grayscaleOnScreen = false;
+
   if (mode == RefreshMode::FAST_REFRESH) {
     consecutiveFastRefreshes++;
     if (consecutiveFastRefreshes >= kMaxFastRefreshes) {
@@ -75,8 +79,16 @@ void HalDisplay::displayBuffer(HalDisplay::RefreshMode mode, bool turnOffScreen)
 }
 
 void HalDisplay::displayWindow(uint16_t x, uint16_t y, uint16_t w, uint16_t h, bool turnOffScreen) {
+  if (grayscaleOnScreen) {
+    // After displayGrayBuffer the controller BW RAM still holds the grayscale
+    // LSB plane. A windowed write only fixes the window region, so the
+    // full-panel differential refresh would re-drive every anti-aliased pixel
+    // outside the window. Do one full differential refresh to rebase both RAMs.
+    displayBuffer(RefreshMode::FAST_REFRESH, turnOffScreen);
+    return;
+  }
   consecutiveFastRefreshes++;
-  if (consecutiveFastRefreshes >= kMaxFastRefreshes) {
+  if (consecutiveFastRefreshes >= kMaxWindowedRefreshes) {
     displayBuffer(RefreshMode::HALF_REFRESH, turnOffScreen);
   } else {
     HalSpiBus::Lock spiLock;
@@ -113,7 +125,10 @@ void HalDisplay::cleanupGrayscaleBuffers(const uint8_t* bwBuffer) { einkDisplay.
 
 void HalDisplay::displayGrayBuffer(bool turnOffScreen) {
   HalSpiBus::Lock spiLock;
-  consecutiveFastRefreshes = 0;
+  // Deliberately leaves consecutiveFastRefreshes untouched: the grayscale LUT
+  // pass only drives the anti-aliased pixels and cleans no ghosting, so it
+  // must not re-arm the fast-refresh promotion counter.
+  grayscaleOnScreen = true;
   einkDisplay.displayGrayBuffer(turnOffScreen);
 }
 

@@ -687,6 +687,12 @@ void GfxRenderer::drawText(const int fontId, const int x, const int y, const cha
 }
 
 void GfxRenderer::drawLine(int x1, int y1, int x2, int y2, const bool state) const {
+  // Flat primitives render only in BW mode. During the grayscale passes the
+  // framebuffer holds drive flags (bit 1 = drive this pixel toward gray), so a
+  // white fill or line would flag whole regions as "drive to dark gray" and
+  // smear the panel. Only mode-classified content (glyphs, 2-bit bitmaps) may
+  // draw into the grayscale planes.
+  if (renderMode != BW) return;
   if (fontCacheManager_ && fontCacheManager_->isScanning()) return;
   const int sw = getScreenWidth();
   const int sh = getScreenHeight();
@@ -857,6 +863,7 @@ void GfxRenderer::drawRoundedRect(const int x, const int y, const int width, con
 }
 
 void GfxRenderer::fillRect(const int x, const int y, const int width, const int height, const bool state) const {
+  if (renderMode != BW) return;  // flat primitive — BW only (see drawLine)
   for (int fillY = y; fillY < y + height; fillY++) {
     drawLine(x, fillY, x + width - 1, fillY, state);
   }
@@ -890,6 +897,7 @@ void GfxRenderer::drawPixelDither<Color::DarkGray>(const int x, const int y) con
 }
 
 void GfxRenderer::fillRectDither(const int x, const int y, const int width, const int height, Color color) const {
+  if (renderMode != BW) return;  // flat primitive — BW only (see drawLine)
   if (color == Color::Clear) {
   } else if (color == Color::Black) {
     fillRect(x, y, width, height, true);
@@ -919,6 +927,7 @@ void GfxRenderer::fillRectDither(const int x, const int y, const int width, cons
 
 void GfxRenderer::maskRoundedRectOutsideCorners(const int x, const int y, const int width, const int height,
                                                 const int radius, const Color color) const {
+  if (renderMode != BW) return;  // flat primitive — BW only (see drawLine)
   if (radius <= 0 || color == Color::Clear) {
     return;
   }
@@ -1065,6 +1074,7 @@ void GfxRenderer::fillRoundedRect(const int x, const int y, const int width, con
 }
 
 void GfxRenderer::drawImage(const uint8_t bitmap[], const int x, const int y, const int width, const int height) const {
+  if (renderMode != BW) return;  // raw blit — BW only (see drawLine)
   int rotatedX = 0;
   int rotatedY = 0;
   rotateCoordinates(orientation, x, y, &rotatedX, &rotatedY, panelWidth, panelHeight);
@@ -1088,11 +1098,13 @@ void GfxRenderer::drawImage(const uint8_t bitmap[], const int x, const int y, co
 }
 
 void GfxRenderer::drawIcon(const uint8_t bitmap[], const int x, const int y, const int width, const int height) const {
+  if (renderMode != BW) return;  // raw blit — BW only (see drawLine)
   display.drawImageTransparent(bitmap, y, getScreenWidth() - width - x, height, width);
 }
 
 void GfxRenderer::drawIconDirect(const uint8_t bitmap[], const int x, const int y, const int width,
                                   const int height) const {
+  if (renderMode != BW) return;  // raw blit — BW only (see drawLine)
   // Pixel-accurate version of drawIcon. drawIcon delegates to drawImageTransparent which
   // truncates physX to a byte boundary, shifting the icon by up to 7px. This function uses
   // the same bit-shift logic as drawIconInverted so the icon lands at the exact pixel position,
@@ -1143,6 +1155,7 @@ void GfxRenderer::drawIconDirect(const uint8_t bitmap[], const int x, const int 
 
 void GfxRenderer::drawIconInverted(const uint8_t bitmap[], const int x, const int y, const int width,
                                    const int height) const {
+  if (renderMode != BW) return;  // raw blit that ORs white bits — BW only (see drawLine)
   // No fontCacheManager/isScanning guard here: icon bitmaps are flash-resident
   // constants, not glyphs or SD bitmaps. fillRoundedRect (called just before
   // this) also has no guard, so skipping only the icon leaves a solid-black
@@ -1432,6 +1445,7 @@ void GfxRenderer::drawPerspectiveBitmap(const Bitmap& bitmap, const int x, const
 }
 
 void GfxRenderer::fillPolygon(const int* xPoints, const int* yPoints, int numPoints, bool state) const {
+  if (renderMode != BW) return;  // flat primitive — BW only (see drawLine)
   if (numPoints < 3) return;
 
   // Find bounding box
@@ -1520,20 +1534,22 @@ void GfxRenderer::displayWindow(int x, int y, int width, int height) const {
   rotateCoordinates(orientation, x, y + height - 1, &px3, &py3, panelWidth, panelHeight);
   rotateCoordinates(orientation, x + width - 1, y + height - 1, &px4, &py4, panelWidth, panelHeight);
 
-  int minX = std::min({px1, px2, px3, px4});
-  int maxX = std::max({px1, px2, px3, px4});
-  int minY = std::min({py1, py2, py3, py4});
-  int maxY = std::max({py1, py2, py3, py4});
+  const int minX = std::max(0, std::min({px1, px2, px3, px4}));
+  const int maxX = std::min(static_cast<int>(panelWidth) - 1, std::max({px1, px2, px3, px4}));
+  const int minY = std::max(0, std::min({py1, py2, py3, py4}));
+  const int maxY = std::min(static_cast<int>(panelHeight) - 1, std::max({py1, py2, py3, py4}));
 
-  int physX = std::max(0, minX);
-  int physY = std::max(0, minY);
-  int physW = std::min(static_cast<int>(panelWidth) - physX, maxX - minX + 1);
-  int physH = std::min(static_cast<int>(panelHeight) - physY, maxY - minY + 1);
+  if (minX > maxX || minY > maxY) return;
 
-  if (physW <= 0 || physH <= 0) return;
+  // The controller addresses whole bytes along panel X: EInkDisplay::displayWindow
+  // rejects windows whose x/width are not multiples of 8, so align x down and
+  // widen to the next byte boundary.
+  const int physX = minX & ~7;
+  int physW = (maxX - physX + 8) & ~7;
+  if (physX + physW > static_cast<int>(panelWidth)) physW = static_cast<int>(panelWidth) - physX;
 
-  display.displayWindow(static_cast<uint16_t>(physX), static_cast<uint16_t>(physY),
-                        static_cast<uint16_t>(physW), static_cast<uint16_t>(physH));
+  display.displayWindow(static_cast<uint16_t>(physX), static_cast<uint16_t>(minY),
+                        static_cast<uint16_t>(physW), static_cast<uint16_t>(maxY - minY + 1));
 }
 
 std::string GfxRenderer::truncatedText(const int fontId, const char* text, const int maxWidth,

@@ -59,7 +59,16 @@ class HalDisplay {
  private:
   EInkDisplay einkDisplay;
   int consecutiveFastRefreshes = 0;
+  // True while the panel shows a grayscale frame: the controller BW RAM still
+  // holds the LSB plane, so windowed updates are unsafe until a full display.
+  bool grayscaleOnScreen = false;
+  // Full-buffer fast refreshes promote to HALF after 32 — just above the max
+  // reader refresh-frequency setting (30) so the reader's own cadence wins.
   static constexpr int kMaxFastRefreshes = 32;
+  // Windowed updates (settings selection) redraw the same strip repeatedly and
+  // have no cleaning cadence of their own: promote after 8, per the ghosting
+  // design spec.
+  static constexpr int kMaxWindowedRefreshes = 8;
 };
 
 extern HalDisplay display;

@@ -44,8 +44,8 @@ void SettingsActivity::rebuildSettingsLists() {
 
   // Per-tab helpers: find a setting by nameId and push to the appropriate vector.
   auto addDisplaySetting = [&](StrId nameId) {
-    const auto it = std::find_if(allSettings.begin(), allSettings.end(),
-                                 [nameId](const auto& s) { return s.nameId == nameId; });
+    const auto it =
+        std::find_if(allSettings.begin(), allSettings.end(), [nameId](const auto& s) { return s.nameId == nameId; });
     if (it != allSettings.end()) {
       displaySettings.push_back(*it);
       return;
@@ -53,8 +53,8 @@ void SettingsActivity::rebuildSettingsLists() {
     LOG_ERR("SET", "Missing display setting definition for nameId=%d", static_cast<int>(nameId));
   };
   auto addReaderSetting = [&](StrId nameId) {
-    const auto it = std::find_if(allSettings.begin(), allSettings.end(),
-                                 [nameId](const auto& s) { return s.nameId == nameId; });
+    const auto it =
+        std::find_if(allSettings.begin(), allSettings.end(), [nameId](const auto& s) { return s.nameId == nameId; });
     if (it != allSettings.end()) {
       readerSettings.push_back(*it);
       return;
@@ -62,8 +62,8 @@ void SettingsActivity::rebuildSettingsLists() {
     LOG_ERR("SET", "Missing reader setting definition for nameId=%d", static_cast<int>(nameId));
   };
   auto addSystemSetting = [&](StrId nameId) {
-    const auto it = std::find_if(allSettings.begin(), allSettings.end(),
-                                 [nameId](const auto& s) { return s.nameId == nameId; });
+    const auto it =
+        std::find_if(allSettings.begin(), allSettings.end(), [nameId](const auto& s) { return s.nameId == nameId; });
     if (it != allSettings.end()) {
       systemSettings.push_back(*it);
       return;
@@ -71,8 +71,8 @@ void SettingsActivity::rebuildSettingsLists() {
     LOG_ERR("SET", "Missing system setting definition for nameId=%d", static_cast<int>(nameId));
   };
   auto addControlSetting = [&](StrId nameId) {
-    const auto it = std::find_if(allSettings.begin(), allSettings.end(),
-                                 [nameId](const auto& s) { return s.nameId == nameId; });
+    const auto it =
+        std::find_if(allSettings.begin(), allSettings.end(), [nameId](const auto& s) { return s.nameId == nameId; });
     if (it != allSettings.end()) {
       controlsSettings.push_back(*it);
       return;
@@ -80,9 +80,8 @@ void SettingsActivity::rebuildSettingsLists() {
     LOG_ERR("SET", "Missing control setting definition for nameId=%d", static_cast<int>(nameId));
   };
   auto addControlSettingByKey = [&](const char* key) {
-    const auto it = std::find_if(allSettings.begin(), allSettings.end(), [key](const auto& s) {
-      return s.key && std::strcmp(s.key, key) == 0;
-    });
+    const auto it = std::find_if(allSettings.begin(), allSettings.end(),
+                                 [key](const auto& s) { return s.key && std::strcmp(s.key, key) == 0; });
     if (it != allSettings.end()) {
       controlsSettings.push_back(*it);
       return;
@@ -142,9 +141,8 @@ void SettingsActivity::rebuildSettingsLists() {
   addSystemSetting(StrId::STR_TIME_TO_SLEEP);
 
   // Build Controls tab with section headers
-  const bool hasTiltPageTurnSetting = std::any_of(allSettings.begin(), allSettings.end(), [](const auto& s) {
-    return s.nameId == StrId::STR_TILT_PAGE_TURN;
-  });
+  const bool hasTiltPageTurnSetting = std::any_of(allSettings.begin(), allSettings.end(),
+                                                  [](const auto& s) { return s.nameId == StrId::STR_TILT_PAGE_TURN; });
   const size_t expectedControlsSettingsCount = hasTiltPageTurnSetting ? 15 : 13;
   controlsSettings.reserve(expectedControlsSettingsCount);
   controlsSettings.push_back(SettingInfo::SectionHeader(StrId::STR_POWER_BUTTON));
@@ -406,8 +404,8 @@ void SettingsActivity::render(RenderLock&&) {
     GUI.drawList(
         renderer,
         Rect{0, metrics.topPadding + metrics.headerHeight + metrics.tabBarHeight + metrics.verticalSpacing, pageWidth,
-             pageHeight - (metrics.topPadding + metrics.headerHeight + metrics.tabBarHeight + metrics.buttonHintsHeight +
-                           metrics.verticalSpacing * 2)},
+             pageHeight - (metrics.topPadding + metrics.headerHeight + metrics.tabBarHeight +
+                           metrics.buttonHintsHeight + metrics.verticalSpacing * 2)},
         settingsCount, selectedSettingIndex - 1,
         [&settings](int index) { return std::string(I18N.get(settings[index].nameId)); }, nullptr, nullptr,
         [&settings](int i) {
@@ -440,7 +438,7 @@ void SettingsActivity::render(RenderLock&&) {
       const int labelX = (pageWidth - labelWidth) / 2;
       const int labelY =
           pageHeight - metrics.buttonHintsHeight - metrics.verticalSpacing - 12;  // 12px above the button hints
-      renderer.drawText(SMALL_FONT_ID, labelX, labelY, "Customink " CROSSINK_VERSION);
+      renderer.drawText(SMALL_FONT_ID, labelX, labelY, "CrossInk " CROSSINK_VERSION);
     }
 
     // Draw help text
@@ -464,58 +462,52 @@ void SettingsActivity::render(RenderLock&&) {
   const bool isX3 = gpio.deviceIsX3();
 #endif
 
-  if (!isX3 && previousCategoryIndex == selectedCategoryIndex && previousSettingIndex != -1) {
-    int rowHeight = BaseMetrics::values.listRowHeight;
-    Rect listRect(0, metrics.topPadding + metrics.headerHeight + metrics.tabBarHeight + metrics.verticalSpacing, pageWidth,
-                  pageHeight - (metrics.topPadding + metrics.headerHeight + metrics.tabBarHeight + metrics.buttonHintsHeight +
-                                metrics.verticalSpacing * 2));
-    int pageItems = listRect.height / rowHeight;
+  // Windowed update only for pure selection movement within the same category
+  // and the same list page. Value toggles can change chrome anywhere on screen
+  // (uiTheme relayouts everything, showButtonHints redraws the hint bar, ...)
+  // and a page flip replaces the whole list text — whose anti-aliased gray
+  // pixels a windowed FAST refresh cannot erase — so both take the
+  // full-refresh path below.
+  if (!isX3 && previousCategoryIndex == selectedCategoryIndex && previousSettingIndex != -1 &&
+      previousSettingIndex != selectedSettingIndex) {
+    const int tabBarTop = metrics.topPadding + metrics.headerHeight;
+    const int listTop = tabBarTop + metrics.tabBarHeight + metrics.verticalSpacing;
+    const int listHeight = pageHeight - (listTop + metrics.buttonHintsHeight + metrics.verticalSpacing);
+    // Same pagination formula as BaseTheme::drawList and Lyra's
+    // drawListWithMetrics (rect.height / active-theme listRowHeight). Lyra's
+    // single-page "content fits" case only makes this estimate conservative:
+    // it can send a same-page move to the full path, never the reverse.
+    const int pageItems = std::max(1, listHeight / metrics.listRowHeight);
+    const int prevPage = std::max(0, previousSettingIndex - 1) / pageItems;
+    const int newPage = std::max(0, selectedSettingIndex - 1) / pageItems;
 
-    int prevPage = (previousSettingIndex - 1) / pageItems;
-    int newPage = (selectedSettingIndex - 1) / pageItems;
-    if (previousSettingIndex == 0) prevPage = 0;
-    if (selectedSettingIndex == 0) newPage = 0;
-
-    if (prevPage == newPage && std::abs(selectedSettingIndex - previousSettingIndex) <= 1) {
-      auto getRowY = [&](int idx) {
-        if (idx == 0) {
-          return metrics.topPadding + metrics.headerHeight;
-        }
-        int pageStartIndex = (idx - 1) / pageItems * pageItems;
-        int selY = listRect.y;
-        for (int j = 0; j < (idx - 1) % pageItems; j++) {
-          selY += rowHeight;
-          if (pageStartIndex + j + 1 < settingsCount &&
-              settings[pageStartIndex + j + 1].type == SettingType::SECTION_HEADER) {
-            selY += 15;
-          }
-        }
-        return selY;
-      };
-
-      int prevY = getRowY(previousSettingIndex);
-      int newY = getRowY(selectedSettingIndex);
-      int prevH = (previousSettingIndex == 0) ? metrics.tabBarHeight : rowHeight;
-      int newH = (selectedSettingIndex == 0) ? metrics.tabBarHeight : rowHeight;
-
-      yMin = std::min(prevY, newY) - 4;
-      int yMax = std::max(prevY + prevH, newY + newH) + 4;
-      yHeight = yMax - yMin;
-
-      if (yMin < 0) yMin = 0;
-      if (yMin + yHeight > pageHeight) yHeight = pageHeight - yMin;
-
-      useWindowedUpdate = true;
+    if (prevPage == newPage) {
+      if (previousSettingIndex >= 1 && selectedSettingIndex >= 1) {
+        // Both endpoints are list rows: the tab bar and button hints are
+        // unchanged, so the list strip covers everything that can differ.
+        yMin = tabBarTop + metrics.tabBarHeight;
+        yHeight = pageHeight - metrics.buttonHintsHeight - yMin;
+      } else {
+        // Selection crossed the tab bar: the tab highlight and the bottom
+        // button hint label change too, so refresh from the tab bar down.
+        yMin = tabBarTop;
+        yHeight = pageHeight - yMin;
+      }
+      useWindowedUpdate = yHeight > 0;
     }
   }
 
   if (useWindowedUpdate) {
     renderer.displayWindow(0, yMin, pageWidth, yHeight);
   } else {
+    // The BW frame must be displayed before the anti-aliasing pass:
+    // displayGrayBuffer only drives the gray AA-edge pixels and leaves every
+    // other pixel as-is on the panel, so without this the previous frame would
+    // remain visible underneath. Use standard differential refresh to avoid
+    // intense inverted flashing when switching screens or tabs.
+    renderer.displayBuffer();
     if (SETTINGS.textAntiAliasing) {
       UIRenderUtils::renderUIAntiAliased(renderer, drawSettingsContent);
-    } else {
-      renderer.displayBuffer();
     }
   }
 

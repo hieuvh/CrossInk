@@ -1567,45 +1567,46 @@ void EpubReaderActivity::renderContents(std::unique_ptr<Page> page, const int or
   const bool needsTextGrayscale = SETTINGS.textAntiAliasing;
   const bool needsAnyGrayscale = needsTextGrayscale || needsImageGrayscale;
 
-  page->render(renderer, SETTINGS.getReaderFontId(), orientedMarginLeft, orientedMarginTop);
-  renderStatusBar();
-  if (pendingBookmarkFeedback) {
-    const char* msg = tr(STR_BOOKMARK_ADDED);
-    switch (bookmarkFeedbackType) {
-      case BookmarkFeedbackType::Added:
-        msg = tr(STR_BOOKMARK_ADDED);
-        break;
-      case BookmarkFeedbackType::Removed:
-        msg = tr(STR_BOOKMARK_REMOVED);
-        break;
-      case BookmarkFeedbackType::LimitReached:
-        msg = tr(STR_BOOKMARK_LIMIT_REACHED);
-        break;
+  const auto drawToast = [this](const char* msg) {
+    constexpr int toastPadX = 20;
+    constexpr int toastPadY = 12;
+    const int msgW = renderer.getTextWidth(UI_10_FONT_ID, msg);
+    const int msgH = renderer.getLineHeight(UI_10_FONT_ID);
+    const int toastW = msgW + toastPadX * 2;
+    const int toastH = msgH + toastPadY * 2;
+    const int toastX = (renderer.getScreenWidth() - toastW) / 2;
+    const int toastY = (renderer.getScreenHeight() - toastH) / 2;
+    renderer.fillRect(toastX, toastY, toastW, toastH, true);
+    renderer.drawText(UI_10_FONT_ID, toastX + toastPadX, toastY + toastPadY, msg, false);
+  };
+  // Composes the complete BW frame. Also used after the grayscale passes to
+  // rebuild the framebuffer for the differential-refresh baseline, so it must
+  // reproduce everything displayBuffer put on screen (status bar and toasts
+  // included) — anything missing here ghosts on the next fast refresh.
+  const auto renderBwFrame = [&]() {
+    page->render(renderer, SETTINGS.getReaderFontId(), orientedMarginLeft, orientedMarginTop);
+    renderStatusBar();
+    if (pendingBookmarkFeedback) {
+      const char* msg = tr(STR_BOOKMARK_ADDED);
+      switch (bookmarkFeedbackType) {
+        case BookmarkFeedbackType::Added:
+          msg = tr(STR_BOOKMARK_ADDED);
+          break;
+        case BookmarkFeedbackType::Removed:
+          msg = tr(STR_BOOKMARK_REMOVED);
+          break;
+        case BookmarkFeedbackType::LimitReached:
+          msg = tr(STR_BOOKMARK_LIMIT_REACHED);
+          break;
+      }
+      drawToast(msg);
     }
-    constexpr int toastPadX = 20;
-    constexpr int toastPadY = 12;
-    const int msgW = renderer.getTextWidth(UI_10_FONT_ID, msg);
-    const int msgH = renderer.getLineHeight(UI_10_FONT_ID);
-    const int toastW = msgW + toastPadX * 2;
-    const int toastH = msgH + toastPadY * 2;
-    const int toastX = (renderer.getScreenWidth() - toastW) / 2;
-    const int toastY = (renderer.getScreenHeight() - toastH) / 2;
-    renderer.fillRect(toastX, toastY, toastW, toastH, true);
-    renderer.drawText(UI_10_FONT_ID, toastX + toastPadX, toastY + toastPadY, msg, false);
-  }
-  if (pendingCompletedFeedback) {
-    const char* msg = completedFeedbackIsFinished ? tr(STR_MARKED_FINISHED) : tr(STR_MARKED_UNFINISHED);
-    constexpr int toastPadX = 20;
-    constexpr int toastPadY = 12;
-    const int msgW = renderer.getTextWidth(UI_10_FONT_ID, msg);
-    const int msgH = renderer.getLineHeight(UI_10_FONT_ID);
-    const int toastW = msgW + toastPadX * 2;
-    const int toastH = msgH + toastPadY * 2;
-    const int toastX = (renderer.getScreenWidth() - toastW) / 2;
-    const int toastY = (renderer.getScreenHeight() - toastH) / 2;
-    renderer.fillRect(toastX, toastY, toastW, toastH, true);
-    renderer.drawText(UI_10_FONT_ID, toastX + toastPadX, toastY + toastPadY, msg, false);
-  }
+    if (pendingCompletedFeedback) {
+      drawToast(completedFeedbackIsFinished ? tr(STR_MARKED_FINISHED) : tr(STR_MARKED_UNFINISHED));
+    }
+  };
+
+  renderBwFrame();
   fcm->logStats("bw_render");
   const auto tBwRender = millis();
   const auto logImagePageProfile = [](const uint32_t imageBlankDisplayMs, const uint32_t imageRestoreRenderMs,
@@ -1651,9 +1652,9 @@ void EpubReaderActivity::renderContents(std::unique_ptr<Page> page, const int or
     const auto tBwStore = millis(); // Kept for timing diffs
 
     if (activityManager.hasPendingRender()) {
-      renderer.clearScreen();
       renderer.setRenderMode(GfxRenderer::BW);
-      page->render(renderer, SETTINGS.getReaderFontId(), orientedMarginLeft, orientedMarginTop);
+      renderer.clearScreen();
+      renderBwFrame();
       renderer.cleanupGrayscaleWithFrameBuffer();
       LOG_DBG("ERS", "Skip grayscale: page turn queued before AA started");
       return;
@@ -1670,9 +1671,9 @@ void EpubReaderActivity::renderContents(std::unique_ptr<Page> page, const int or
     const auto tGrayLsb = millis();
 
     if (activityManager.hasPendingRender()) {
-      renderer.clearScreen();
       renderer.setRenderMode(GfxRenderer::BW);
-      page->render(renderer, SETTINGS.getReaderFontId(), orientedMarginLeft, orientedMarginTop);
+      renderer.clearScreen();
+      renderBwFrame();
       renderer.cleanupGrayscaleWithFrameBuffer();
       LOG_DBG("ERS", "Skip grayscale MSB: page turn queued after LSB pass (lsb=%lums)", tGrayLsb - tBwStore);
       return;
@@ -1691,9 +1692,9 @@ void EpubReaderActivity::renderContents(std::unique_ptr<Page> page, const int or
     const auto tGrayDisplay = millis();
     renderer.setRenderMode(GfxRenderer::BW);
 
-    // Re-render BW to restore framebuffer state
+    // Re-render the full BW frame to restore the differential-refresh baseline
     renderer.clearScreen();
-    page->render(renderer, SETTINGS.getReaderFontId(), orientedMarginLeft, orientedMarginTop);
+    renderBwFrame();
     renderer.cleanupGrayscaleWithFrameBuffer();
     const auto tBwRestore = millis();
 

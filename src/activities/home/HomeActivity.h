@@ -22,7 +22,8 @@ class HomeActivity final : public Activity {
  private:
   ButtonNavigator buttonNavigator;
   int selectorIndex = 0;
-  int lastCarouselBookIndex = 0;  // remembered position when leaving carousel row
+  int lastCarouselBookIndex = 0;   // remembered position when leaving carousel row
+  int lastRenderedCarouselIdx = -1;  // centered book currently on the panel (cover-swap detection)
   bool recentsLoading = false;
   bool recentsLoaded = false;
   bool firstRenderDone = false;
