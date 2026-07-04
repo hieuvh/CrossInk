@@ -113,7 +113,7 @@ NtpSyncService::Result NtpSyncService::syncOnce(uint32_t wifiTimeoutMs, uint32_t
   if (!g_sntpSynced.load()) {
     LOG_ERR("NTP", "SNTP timeout after %lums (sync_status=%d, server0=%s reach=%u)",
             static_cast<unsigned long>(waited), int(sntp_get_sync_status()),
-            sntp_getservername(0) ? sntp_getservername(0) : "?", unsigned(sntp_getreachability(0)));
+            esp_sntp_getservername(0) ? esp_sntp_getservername(0) : "?", unsigned(esp_sntp_getreachability(0)));
     if (tearDownWifi) wifiOff();
     return {false, 0, Error::NtpTimeout};
   }
