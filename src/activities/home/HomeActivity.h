@@ -15,7 +15,7 @@ struct Rect;
 
 class HomeActivity final : public Activity {
  public:
-  static constexpr int kCarouselFrameCount = 3;
+  static constexpr int kCarouselFrameCount = 1;
   // Must be >= LyraCarouselMetrics::values.homeRecentBooksCount (asserted in .cpp)
   static constexpr int kMaxCachedBooks = 3;
 
