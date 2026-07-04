@@ -25,6 +25,7 @@
 - Fixed Lyra Carousel theme showing a solid black square instead of an icon for selected items in lists that use subtitle rows (e.g. Recent Books), for icons that only have 24px variants.
 - Fixed selected button icons appearing as a solid black square instead of a white icon on black during font cache scan passes.
 - Fixed deprecated lwIP SNTP declaration warnings in `NtpSyncService.cpp` by replacing them with modern `esp_sntp_` APIs.
+- Fixed battery drain caused by Wi-Fi being left active in the background when exiting the Settings menu after configuring network settings.
 
 ### Removed
 - Removed Bionic Reading and Guide Dots features from the EPUB reader.
