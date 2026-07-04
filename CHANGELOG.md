@@ -15,11 +15,16 @@
 - Reader page turns now skip the grayscale anti-aliasing "upgrade" pass when another page turn is already queued — rapid skimming stays snappy, and the AA refresh only runs once you stop on a page.
 - Tightened menu navigation timings: button polling cadence is now 5 ms (was 10 ms), hold-to-scroll engages at 300 ms (was 500 ms), and continuous nav advances every 250 ms (was 500 ms) — long settings/file-browser lists feel noticeably more responsive.
 - Restored bold weight on Lyra section headers in Settings now that the Vietnamese first-character glyph bug is no longer relevant.
+- Centered popup alerts (`drawPopup`) vertically on the screen for better readability and a premium layout.
+- Optimized SPI transfer speed on X3-based devices by batching row-by-row updates into a single transaction, reducing SPI start/stop cycles from 792 to 1 per plane sync.
+- Inlined pixel adjustments and quantization helpers in `BitmapHelpers.h` to speed up image rendering loops on ESP32-C3.
+- Optimized Lyra Carousel navigation performance and smoothness by shifting from a 3-frame RAM cache with background rendering to a single-frame RAM cache coupled with on-demand SD snapshot cache paging. This eliminates background rendering lag and SD card contention during rapid browsing.
 
 ### Fixed
 - Fixed intermittent crash when opening a book from the Lyra Carousel home screen (race condition between the main task freeing carousel frame buffers and the render task reading them).
 - Fixed Lyra Carousel theme showing a solid black square instead of an icon for selected items in lists that use subtitle rows (e.g. Recent Books), for icons that only have 24px variants.
 - Fixed selected button icons appearing as a solid black square instead of a white icon on black during font cache scan passes.
+- Fixed deprecated lwIP SNTP declaration warnings in `NtpSyncService.cpp` by replacing them with modern `esp_sntp_` APIs.
 
 ### Removed
 - Removed Bionic Reading and Guide Dots features from the EPUB reader.
