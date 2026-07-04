@@ -722,14 +722,13 @@ void LyraTheme::drawButtonMenu(GfxRenderer& renderer, Rect rect, int buttonCount
 }
 
 Rect LyraTheme::drawPopup(const GfxRenderer& renderer, const char* message) const {
-  // Scale y position proportionally to screen height (16.5% from top)
-  const int y = static_cast<int>(renderer.getScreenHeight() * 0.165f);
   constexpr int outline = 2;
   const int textWidth = renderer.getTextWidth(UI_12_FONT_ID, message, EpdFontFamily::REGULAR);
   const int textHeight = renderer.getLineHeight(UI_12_FONT_ID);
   const int w = textWidth + popupMarginX * 2;
   const int h = textHeight + popupMarginY * 2;
   const int x = (renderer.getScreenWidth() - w) / 2;
+  const int y = (renderer.getScreenHeight() - h) / 2;
 
   renderer.fillRoundedRect(x - outline, y - outline, w + outline * 2, h + outline * 2, cornerRadius + outline,
                            Color::White);

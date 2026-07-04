@@ -19,7 +19,7 @@ My goal with this fork was to maintain the core Crosspoint firmware while integr
 
 ### Highlights
 
-- New reader fonts: ChareInk, Lexend Deca, and Bitter
+- New reader fonts: ChareInk, Lexend Deca, Bitter, and Quicksand
 - Unicode emoji and miscellaneous symbols support (a limited subset)
 - Adjusted font sizes: Teensy (8pt), Tiny (10pt), Small (12pt), Medium (14pt), Large (16pt), Extra Large (18pt), Huge (20pt). See [Font Sizes](#font-sizes) for more details.
 - Added ~~strikethrough~~ support
@@ -40,6 +40,8 @@ My goal with this fork was to maintain the core Crosspoint firmware while integr
 - Reading stats: total books read, total reading time, number of sessions, pages turned, average session time, pages turned per minute. You can also set your reading stats as your sleep screen.
 - Added customizable Auto Page Turn Interval (anything between 5-120 seconds)
 - Added ability to view Recent Books as a 3x3 grid view
+- Added a **Button Hints** toggle in Settings → Display to show/hide the bottom labels
+- Added manual time settings, cold-boot NTP time synchronization, and hardware RTC support (DS3231)
 - Device simulator during development
 - To view a more detailed list for each version, visit the [releases](https://github.com/uxjulia/CrossInk/releases) page to read release notes.
 
@@ -52,8 +54,9 @@ The default fonts have been replaced with ChareInk, Lexend Deca, and Bitter. The
 - [ChareInk](https://www.mobileread.com/forums/showthread.php?t=184056) - A cult favorite among the e-reading community for over a decade based off of the typeface [Charis](https://software.sil.org/charis/). It is specially designed to make long texts pleasant and easy to read.
 - [Lexend Deca](https://fonts.google.com/specimen/Lexend+Deca) - A research-backed sans-serif typeface designed to improve reading fluency. Lexend was engineered based on the theory that reading issues are often a design problem (visual crowding) rather than a cognitive one.
 - [Bitter](https://fonts.google.com/specimen/Bitter) - A "contemporary" slab serif typeface for text, it is specially designed for comfortably reading on digital screens. The consistent stroke weight of Bitter helps it render particularly well on e-ink devices. The medium weight has been chosen specifically for improved rendering on the X4.
+- [Quicksand](https://fonts.google.com/specimen/Quicksand) - A sans-serif reading font featuring rounded terminals, offering an additional clean option for body text.
 
-The UI now uses [Inter](https://fonts.google.com/specimen/Inter) as the display font which has improved readability at smaller sizes.
+The UI now uses [Quicksand SemiBold / Bold](https://fonts.google.com/specimen/Quicksand) as the display font, which provides stronger strokes and better contrast on the e-ink screen than Inter.
 
 ### Emojis and Misc Glyphs
 

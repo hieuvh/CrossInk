@@ -3,6 +3,10 @@
 #include <GfxRenderer.h>
 #include <Logging.h>
 
+#ifndef SIMULATOR
+#include <WiFi.h>
+#endif
+
 #include <algorithm>
 #include <cstring>
 
@@ -204,6 +208,16 @@ void SettingsActivity::onExit() {
   Activity::onExit();
 
   UITheme::getInstance().reload();  // Re-apply theme in case it was changed
+
+#ifndef SIMULATOR
+  // Ensure WiFi is turned off to save battery when leaving settings
+  if (WiFi.getMode() != WIFI_OFF) {
+    LOG_DBG("SETT", "Disabling Wi-Fi on Settings exit to save battery");
+    WiFi.disconnect(false);
+    delay(50);
+    WiFi.mode(WIFI_OFF);
+  }
+#endif
 }
 
 void SettingsActivity::loop() {

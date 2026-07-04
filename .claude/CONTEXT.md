@@ -22,6 +22,8 @@ Keep this file focused on repo-specific gotchas that are worth reusing in future
 - `lib/Epub/Epub/Page.cpp`: images must render only in `GfxRenderer::BW`; grayscale passes are text anti-aliasing passes only.
 - Kindle EPUBs may contain paired high-res and old-Kindle fallback images. `ChapterHtmlSlimParser` should skip `<img>` nodes with `data-AmznRemoved-M8` to avoid duplicate stacked images.
 - After image/layout pipeline changes that affect cached EPUB output, clear the affected `.crosspoint/epub_<hash>/` cache if behavior looks stale.
+- On X3 display rendering, always batch SPI transaction opens/closes outside of row-mirroring loops to avoid transaction start/stop overhead (reducing overhead from 792 cycles to 1).
+- Inline high-frequency pixel helpers (like `adjustPixel`, `quantize`) in headers (`BitmapHelpers.h`) so the compiler can optimize away constant checks (e.g. `USE_BRIGHTNESS = false`) in pixel loops.
 
 ## Misc Repo Gotchas
 
